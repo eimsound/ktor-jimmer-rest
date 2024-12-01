@@ -1,0 +1,23 @@
+[versions]
+kotlin = "2.0.21"
+ktor = "3.0.1"
+coroutines = "1.8.0"
+jimmer = "0.9.21"
+[libraries]
+ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+jimmer = { module = "org.babyfish.jimmer:jimmer-sql-kotlin", version.ref = "jimmer" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+[bundles]
+dependencie = [
+    'ktor-server-core',
+    'jimmer',
+    'kotlinx-coroutines-core',
+    'kotlin-reflect'
+]
+
+test = ['kotlin-test']
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
