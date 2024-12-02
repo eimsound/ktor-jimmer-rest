@@ -1,0 +1,25 @@
+# python generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+requirements-dev.lock
+.python-version
+.venv
+venv
+
+# ide
+.idea/
+.vscode/
+.zed/
+
+# tool
+.git/
+
+# build
+site/
+
+# other
+tmp/
