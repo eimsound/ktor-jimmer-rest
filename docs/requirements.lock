@@ -18,6 +18,8 @@ charset-normalizer==3.4.0
 click==8.1.7
     # via mkdocs
 colorama==0.4.6
+    # via click
+    # via mkdocs
     # via mkdocs-material
 ghp-import==2.1.0
     # via mkdocs
