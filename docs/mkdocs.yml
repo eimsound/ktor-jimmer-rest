@@ -1,9 +1,9 @@
 site_name: Ktor Jimmer Rest
-site_url: https://ktor-jimmer-rest.EchoInMirror.github.com/
+site_url: https://ktor-jimmer-rest.eimsound.github.com/
 
-copyright: Copyright &copy; 2024 - 2025 SparrowAndSnow
-repo_name: EchoInMirror/ktor-jimmer-rest
-repo_url: https://github.com/EchoInMirror/ktor-jimmer-rest
+copyright: Copyright &copy; 2024 - 2025 SparrowAndSnow (EIMSOUND)
+repo_name: eimsound/ktor-jimmer-rest
+repo_url: https://github.com/eimsound/ktor-jimmer-rest
 
 theme:
   name: material
