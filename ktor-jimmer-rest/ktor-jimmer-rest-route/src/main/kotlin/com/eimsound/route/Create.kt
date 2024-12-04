@@ -4,10 +4,8 @@ import com.eimsound.ktor.jimmer.rest.validator.ValidationBuilder
 import com.eimsound.ktor.jimmer.rest.provider.CallProvider
 import com.eimsound.ktor.jimmer.rest.provider.EntityProvider
 import com.eimsound.ktor.jimmer.rest.provider.ValidatorProvider
-import com.eimsound.ktor.jimmer.rest.validator.validate
-import com.eimsound.ktor.jimmer.rest.config.sqlClient
-import com.eimsound.validator.ValidationResult
-import io.ktor.http.*
+import com.eimsound.ktor.jimmer.rest.jimmer.sqlClient
+import com.eimsound.ktor.jimmer.rest.provider.validate
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -19,17 +17,10 @@ inline fun <reified TEntity : Any> Route.create(
     crossinline block: suspend CreateProvider<TEntity>.(TEntity) -> Unit,
 ) = post(path) {
     val body = call.receive<TEntity>()
-    val provider = CreateProvider.Impl<TEntity>(call).apply { block(body) }
-    val entity = provider.entity ?: body
-
-    provider.validator?.let {
-        validate(entity, it)
-    }.let {
-        if (it is ValidationResult.Invalid) {
-            call.response.status(HttpStatusCode.BadRequest)
-            return@post call.respond(it.errors)
-        }
+    val provider = CreateProvider.Impl<TEntity>(call).apply { block(body) }.apply{
+        validator?.validate(body)
     }
+    val entity = provider.entity?.invoke(body) ?: body
 
     val result = sqlClient.insert(entity)
     call.respond(result.modifiedEntity)
@@ -39,7 +30,7 @@ interface CreateProvider<T : Any> : CallProvider, EntityProvider<T>, ValidatorPr
     class Impl<T : Any>(
         override val call: RoutingCall,
     ) : CreateProvider<T> {
-        override var entity: T? = null
+        override var entity: ((T) -> T)? = null
         override var validator: (ValidationBuilder.(T) -> Unit)? = null
     }
 }

@@ -1,4 +1,4 @@
-package com.eimsound.validator.exception
+package com.eimsound.validator.exception.catcher
 
 import com.eimsound.ktor.jimmer.rest.validator.ValidationBuilder
 import org.babyfish.jimmer.UnloadedException

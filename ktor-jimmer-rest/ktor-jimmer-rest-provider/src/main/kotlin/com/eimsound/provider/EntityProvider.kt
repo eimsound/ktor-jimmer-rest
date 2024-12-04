@@ -5,11 +5,11 @@ import org.babyfish.jimmer.sql.Id
 import kotlin.reflect.KClass
 
 interface EntityProvider<T : Any> {
-    var entity: T?
+    var entity: ((T) -> T)?
 }
 
-infix fun <T : Any> EntityProvider<T>.entity(block: () -> T) {
-    entity = block()
+infix fun <T : Any> EntityProvider<T>.entity(block: (T) -> T) {
+    entity = block
 }
 
 

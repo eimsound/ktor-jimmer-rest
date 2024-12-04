@@ -1,17 +1,15 @@
 package com.eimsound.ktor.jimmer.rest.validator
 
 import com.eimsound.validator.ValidationResult
-import com.eimsound.validator.exception.ValidationExceptionCatcher
+import com.eimsound.validator.exception.catcher.ValidationExceptionCatcher
 import java.time.Duration
 import java.time.temporal.Temporal
 import java.util.*
 import kotlin.reflect.KProperty
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.isAccessible
 import kotlin.text.isNotBlank
 
 
-open class ValidationBuilder(val entity: Any) {
+open class ValidationBuilder() {
     private val KProperty<*>.jsonName
         get() = name
 
@@ -24,11 +22,7 @@ open class ValidationBuilder(val entity: Any) {
         predicate: T.() -> Boolean,
     ): KProperty<T> = apply {
         val value = runCatching {
-            val value = entity::class.memberProperties.find { it.name == name }.let {
-                it?.isAccessible = true
-                it?.getter?.call(entity)
-            }
-            value
+            getter?.call()
         }.getOrNull() as T?
         value.validate(jsonName, message, predicate)
     }
@@ -175,7 +169,7 @@ open class ValidationBuilder(val entity: Any) {
 
 
 inline fun <T : Any> validate(entity: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
-    val validationBuilder = ValidationBuilder(entity)
+    val validationBuilder = ValidationBuilder()
     val result = runCatching {
         validationBuilder.apply { block(entity) }
     }.getOrElse { e ->
