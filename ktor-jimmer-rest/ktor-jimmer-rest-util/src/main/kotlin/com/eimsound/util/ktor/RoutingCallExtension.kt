@@ -33,8 +33,36 @@ fun RoutingCall.findQueryParameterNameWithExt(name: String, separator: String): 
     return list
 }
 
+/**
+ *
+ * Returns the first parameter with a value if any.
+ *
+ * @receiver ExtParameterMap<T>
+ * @return Parameter<T>?
+ */
+inline fun <T> ExtParameterMap<T>.default() = values.firstOrNull()
 
-inline fun <reified T : Any> RoutingCall.queryParameter(
+
+/**
+ * Returns the default value from the map if available.
+ *
+ * @receiver ExtParameterMap<T>
+ * @return T? The default value or null if no value is found.
+ */
+inline fun <T> ExtParameterMap<T>.defaultValue() = values.firstOrNull()?.value
+
+/**
+ *
+ * Given a KProperty, this function filters the query parameters
+ * to find ones that ends with the property name, and splits them by the given ext.
+ * It returns a map of parameter name and optional extension.
+ *
+ * @receiver RoutingCall
+ * @param property KProperty<KExpression<T>>
+ * @param ext String?
+ * @return ExtParameterMap<T>
+ */
+inline fun <reified T : Any> RoutingCall.queryParameterExt(
     property: KProperty<KExpression<T>>,
     ext: String? = null
 ): ExtParameterMap<T> {
@@ -44,14 +72,23 @@ inline fun <reified T : Any> RoutingCall.queryParameter(
     val type = Class.forName(tableType).kotlin
     val name = (tableName.split(".") + property.name).drop(1)
         .joinToString(Configuration.subParameterSeparator)
-    return queryParameter(type, name, ext)
+    return queryParameterExt(type, name, ext)
 }
 
-
-inline fun <T> ExtParameterMap<T>.default() = values.firstOrNull()
-
-
-inline fun <reified T : Any> RoutingCall.queryParameter(
+/**
+ * Extension function for RoutingCall to find query parameters with a specific separator and extension.
+ *
+ * Given a KClass, a base name and a separator, this function filters the query parameters
+ * to find ones that end with the given name, and splits them by the separator.
+ * It returns a map of parameter name and optional extension.
+ *
+ * @receiver RoutingCall
+ * @param type KClass<*>
+ * @param name String
+ * @param ext String?
+ * @return ExtParameterMap<T>
+ */
+inline fun <reified T : Any> RoutingCall.queryParameterExt(
     type: KClass<*>,
     name: String,
     ext: String? = null
@@ -68,12 +105,63 @@ inline fun <reified T : Any> RoutingCall.queryParameter(
     return map
 }
 
+/**
+ * This extension function for `RoutingCall` provides an overload of `queryParameterExt`
+ * that allows querying parameters by their `name` and optional `ext` without specifying a `KClass` type.
+ *
+ * The function internally calls the `queryParameterExt` that requires a `KClass`, using the reified type `T`.
+ *
+ * This is useful for simplifying calls to `queryParameterExt` when the type can be inferred.
+ *
+ * @receiver RoutingCall
+ * @param name String
+ * @param ext String?
+ * @return ExtParameterMap<T>
+ */
+inline fun <reified T : Any> RoutingCall.queryParameterExt(
+    name: String,
+    ext: String? = null
+): ExtParameterMap<T> = queryParameterExt(T::class, name, ext)
 
+
+/**
+ * This extension function for `RoutingCall` retrieves a query parameter by its `name`
+ * and attempts to parse it into the specified type `T`.
+ *
+ * The function uses the provided `KClass` to perform type-safe parsing of the query
+ * parameter value found in the `queryParameters` map.
+ *
+ * If the parameter is not present or cannot be parsed into the specified type, the
+ * function returns null.
+ *
+ * Usage of this function requires an explicit type to be provided for parsing.
+ *
+ * @receiver RoutingCall
+ * @param type KClass<*>
+ * @param name String
+ * @return T? The parsed query parameter value or null if not present or unparsable.
+ */
 inline fun <T : Any> RoutingCall.queryParameter(type: KClass<*>, name: String): T? {
     val serializable = queryParameters[name]?.parse(type)
     return serializable as T?
 }
 
+/**
+ * This extension function for `RoutingCall` retrieves a query parameter by its `name`
+ * and attempts to parse it into the specified type `T`.
+ *
+ * The function uses the provided `KClass` to perform type-safe parsing of the query
+ * parameter value found in the `queryParameters` map.
+ *
+ * If the parameter is not present or cannot be parsed into the specified type, the
+ * function returns null.
+ *
+ * Usage of this function requires an explicit type to be provided for parsing.
+ *
+ * @receiver RoutingCall
+ * @param name String
+ * @return T?
+ */
 inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? {
     return queryParameter(T::class, name)
 }
