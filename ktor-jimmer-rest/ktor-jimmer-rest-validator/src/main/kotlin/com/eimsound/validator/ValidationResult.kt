@@ -1,6 +1,6 @@
-package com.eimsound.validator
+package com.eimsound.ktor.jimmer.rest.validator
 
-import com.eimsound.validator.exception.ValidationException
+import com.eimsound.ktor.jimmer.rest.validator.exception.ValidationException
 import io.ktor.http.HttpStatusCode
 
 sealed class ValidationResult {

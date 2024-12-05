@@ -1,4 +1,4 @@
-package com.eimsound.validator.exception
+package com.eimsound.ktor.jimmer.rest.validator.exception
 
 import io.ktor.http.HttpStatusCode
 

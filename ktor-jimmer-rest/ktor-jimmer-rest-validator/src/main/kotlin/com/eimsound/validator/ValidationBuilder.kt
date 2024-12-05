@@ -1,8 +1,7 @@
 package com.eimsound.ktor.jimmer.rest.validator
 
 import com.eimsound.ktor.jimmer.rest.util.reflect.jimmer.getPropertyFullName
-import com.eimsound.validator.ValidationResult
-import com.eimsound.validator.exception.catcher.ValidationExceptionCatcher
+import com.eimsound.ktor.jimmer.rest.validator.exception.catcher.ValidationExceptionCatcher
 import java.time.Duration
 import java.time.temporal.Temporal
 import java.util.*
