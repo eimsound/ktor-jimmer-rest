@@ -16,8 +16,8 @@ inline fun <reified TEntity : Any> Route.list(
     val provider = ListProvider.Impl<TEntity>(call).apply { block() }
 
     val pager = provider.pager.apply {
-        pageIndex = pageIndex ?: call.queryParameter<Int>(pageIndexParameterName) ?: pageIndex
-        pageSize = pageSize ?: call.queryParameter<Int>(pageSizeParameterName) ?: pageSize
+        pageIndex = call.queryParameter<Int>(pageIndexParameterName) ?: pageIndex
+        pageSize = call.queryParameter<Int>(pageSizeParameterName) ?: pageSize
     }
     val filter = provider.filter
     val fetcher = provider.fetcher

@@ -56,11 +56,11 @@ inline fun <reified T : Any> RoutingCall.queryParameter(
     name: String,
     ext: String? = null
 ): ExtParameterMap<T> {
-    val nameWithExt = findQueryParameterNameWithExt(name, Configuration.extParameterSeparator)
-    val map = nameWithExt.map {
+    val nameWithExtList = findQueryParameterNameWithExt(name, Configuration.extParameterSeparator)
+    val map = nameWithExtList.map {
         val (parameterName, parameterExt) = it
         val parameter = Parameter<T>(parameterName).apply {
-            this.ext = parameterExt ?: ext
+            this.ext = ext ?: parameterExt
             this.value = queryParameter(type, this.nameWithExt)
         }
         parameter.ext to parameter
