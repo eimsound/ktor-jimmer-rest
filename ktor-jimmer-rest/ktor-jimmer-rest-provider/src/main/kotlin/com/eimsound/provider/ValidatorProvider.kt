@@ -14,7 +14,7 @@ fun <T> ValidatorProvider<T>.validator(block: ValidationBuilder.(T) -> Unit) {
     validator = block
 }
 
-fun <T : Any> (ValidationBuilder.(T) -> Unit).validate(body: T) {
+inline fun <reified T : Any> (ValidationBuilder.(T) -> Unit).validate(body: T) {
     validate(body, this).let {
         if (it is ValidationResult.Invalid) {
             it.`throw`(HttpStatusCode.BadRequest)
