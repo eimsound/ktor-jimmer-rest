@@ -7,6 +7,7 @@ import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.fetcher.Fetcher
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import com.eimsound.ktor.jimmer.rest.jimmer.sqlClient
+import com.eimsound.ktor.jimmer.rest.util.ktor.queryParameter
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.list(
@@ -15,8 +16,8 @@ inline fun <reified TEntity : Any> Route.list(
     val provider = ListProvider.Impl<TEntity>(call).apply { block() }
 
     val pager = provider.pager.apply {
-        pageIndex = pageIndex ?: call.param<Int>(pageIndexParameterName) ?: pageIndex
-        pageSize = pageSize ?: call.param<Int>(pageSizeParameterName) ?: pageSize
+        pageIndex = pageIndex ?: call.queryParameter<Int>(pageIndexParameterName) ?: pageIndex
+        pageSize = pageSize ?: call.queryParameter<Int>(pageSizeParameterName) ?: pageSize
     }
     val filter = provider.filter
     val fetcher = provider.fetcher

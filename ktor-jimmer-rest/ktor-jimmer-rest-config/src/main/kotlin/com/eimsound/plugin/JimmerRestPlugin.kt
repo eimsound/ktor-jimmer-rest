@@ -1,7 +1,6 @@
 package com.eimsound.ktor.jimmer.rest.plugin
 
 import com.eimsound.ktor.jimmer.rest.config.Configuration
-import com.eimsound.ktor.jimmer.rest.config.Configuration.sqlClientFactory
 import io.ktor.server.application.*
 
 val JimmerRest = createApplicationPlugin(
@@ -17,7 +16,7 @@ val JimmerRest = createApplicationPlugin(
 
     Configuration.defaultPathVariable = pluginConfig.defaultPathVariable
     Configuration.subParameterSeparator = pluginConfig.subParameterSeparator
-    Configuration.parameterSeparator = pluginConfig.extParameterSeparator
+    Configuration.extParameterSeparator = pluginConfig.extParameterSeparator
 
-    sqlClientFactory = pluginConfig.jimmerSqlClientFactory
+    Configuration.sqlClientFactory = pluginConfig.jimmerSqlClientFactory
 }

@@ -4,7 +4,7 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 
 
 object Configuration {
-    var parameterSeparator = "__"
+    var extParameterSeparator = "__"
     var subParameterSeparator = "_"
 
     var defaultPathVariable = "{id}"

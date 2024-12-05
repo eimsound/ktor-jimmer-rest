@@ -10,7 +10,7 @@ import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.fetcher.Fetcher
 import com.eimsound.ktor.jimmer.rest.config.Configuration
 import com.eimsound.ktor.jimmer.rest.jimmer.sqlClient
-import com.eimsound.ktor.jimmer.rest.provider.defaultPathVariable
+import com.eimsound.ktor.jimmer.rest.util.ktor.defaultPathVariable
 import com.eimsound.ktor.jimmer.rest.util.parser.parse
 import com.eimsound.ktor.jimmer.rest.util.reflect.jimmer.entityIdType
 

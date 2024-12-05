@@ -1,5 +1,7 @@
 package com.eimsound.ktor.jimmer.rest.util.reflect.jimmer
 
+import com.eimsound.ktor.jimmer.rest.util.reflect.getMemberByMemberName
+import com.eimsound.ktor.jimmer.rest.util.reflect.getPropertyByPropertyName
 import com.eimsound.ktor.jimmer.rest.util.reflect.getPropertyOwner
 import com.eimsound.ktor.jimmer.rest.util.reflect.getPropertyTypeByAnnotation
 import org.babyfish.jimmer.sql.Id
@@ -16,3 +18,13 @@ inline fun <T> getPropertyFullName(property: KProperty<T>, bound: KClass<*>): St
 }
 
 inline fun <reified T : Any> entityIdType(): KClass<*> = getPropertyTypeByAnnotation<T>(Id::class)
+
+inline fun tableName(receiver: Any): String {
+    val javaTableName = getPropertyByPropertyName(receiver::class, "javaTable")?.getter?.call(receiver).toString()
+    return javaTableName
+}
+
+inline fun tableType(receiver: Any): String {
+    val typeName = getMemberByMemberName(receiver::class, "getImmutableType")?.call(receiver).toString()
+    return typeName
+}
