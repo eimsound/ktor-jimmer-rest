@@ -9,25 +9,48 @@ subprojects {
     dependencies {
         implementation(rootProject.libs.bundles.dependencie)
         testImplementation(rootProject.libs.bundles.test)
-
     }
     tasks.test {
         useJUnitPlatform()
     }
-    tasks.withType<GenerateModuleMetadata> {
-        enabled = false
-    }
     java {
         withJavadocJar()
+        withSourcesJar()
     }
 }
 
+// 整合源代码jar
+tasks.kotlinSourcesJar {
+    archiveClassifier.set("sources")
+    from(subprojects.map { it.sourceSets.main.get().allSource })
+}
+// 整合源文档jar
+val javadocJarMerger = tasks.register<Jar>("javadocJarMerger") {
+    archiveClassifier.set("javadoc")
+    from(subprojects.map { it.tasks.javadoc.get().outputs })
+}
+
 tasks.jar {
+    dependsOn(tasks.kotlinSourcesJar)
+    dependsOn(javadocJarMerger)
+
+    dependsOn(tasks.withType(GenerateMavenPom::class))
+    into("META-INF") {
+        from("${project.layout.buildDirectory.get()}/publications/mavenJava")
+        exclude("*.asc")
+        rename { it.replace("pom-default.xml", "pom.xml") }
+    }
     from(subprojects.map { it.sourceSets.main.get().output })
+}
+
+
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
 }
 publishing {
     publications {
-        create<MavenPublication>("maven") {
+        create<MavenPublication>("mavenJava") {
             groupId = group.toString()
             artifactId = rootProject.name
             version = version
@@ -59,7 +82,30 @@ publishing {
             }
         }
     }
-    signing{ // 文件签名
-        sign(publishing.publications["maven"])
+
+    repositories {
+        maven {
+            name = "mavenCentral"
+            val releasesRepoUrl = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+            val snapshotsRepoUrl = uri("https://oss.sonatype.org/content/repositories/snapshots")
+            url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
+            credentials {
+                username = System.getProperty("SONATYPE_NEXUS_USERNAME")
+                password = System.getProperty("SONATYPE_NEXUS_PASSWORD")
+            }
+        }
+    }
+    signing {
+        sign(publishing.publications["mavenJava"])
+    }
+
+    tasks.withType<GenerateModuleMetadata> {
+        enabled = false
+    }
+    tasks.javadoc {
+        if (JavaVersion.current().isJava9Compatible) {
+            (options as StandardJavadocDocletOptions).addBooleanOption("html5", true)
+        }
+        (options as StandardJavadocDocletOptions).encoding("UTF-8")
     }
 }
