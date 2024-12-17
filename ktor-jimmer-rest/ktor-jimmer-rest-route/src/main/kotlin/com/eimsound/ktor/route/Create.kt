@@ -10,6 +10,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import org.babyfish.jimmer.Input
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.create(
@@ -21,8 +22,11 @@ inline fun <reified TEntity : Any> Route.create(
         validator?.validate(body)
     }
     val entity = provider.entity?.invoke(body) ?: body
-
-    val result = sqlClient.insert(entity)
+    val result = if (entity is Input<*>) {
+        sqlClient.insert(entity)
+    } else {
+        sqlClient.insert(entity)
+    }
     call.respond(result.modifiedEntity)
 }
 
