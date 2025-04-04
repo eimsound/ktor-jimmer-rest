@@ -14,22 +14,18 @@ import com.eimsound.util.jimmer.entityIdType
 @KtorDsl
 inline fun <reified TEntity : Any> Route.remove(
     path: String = Configuration.defaultPathVariable,
-    crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,
+    crossinline block: suspend RemoveScope<TEntity>.() -> Unit,
 ) = delete(path) {
-    val provider = RemoveProvider.Impl<TEntity>(call).apply { block() }
+    val provider = RemoveScope<TEntity>(call).apply { block() }
     val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
 
     sqlClient.deleteById(TEntity::class, key)
     call.response.status(HttpStatusCode.OK)
 }
 
-interface RemoveProvider<T : Any> :
+class RemoveScope<T : Any>(override val call: RoutingCall) :
     CallProvider, KeyProvider<T> {
-    class Impl<T : Any>(
-        override val call: RoutingCall,
-    ) : RemoveProvider<T> {
-        override var key: Any? = null
-    }
+    override var key: Any? = null
 }
 
 

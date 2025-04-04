@@ -5,7 +5,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.fetcher.Fetcher
-import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import com.eimsound.jimmer.sqlClient
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.Pager
@@ -13,9 +12,9 @@ import com.eimsound.util.jimmer.fetchPageOrElse
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.list(
-    crossinline block: suspend ListProvider<TEntity>.() -> Unit,
+    crossinline block: suspend ListScope<TEntity>.() -> Unit,
 ) = get {
-    val provider = ListProvider.Impl<TEntity>(call).apply { block() }
+    val provider = ListScope<TEntity>(call).apply { block() }
 
     val pager = provider.pager.apply {
         pageIndex = call.queryParameter<Int>(pageIndexParameterName) ?: pageIndex
@@ -25,7 +24,7 @@ inline fun <reified TEntity : Any> Route.list(
     val fetcher = provider.fetcher
 
     val result = sqlClient.createQuery(TEntity::class) {
-        filter?.invoke(this)
+        filter?.invoke(FilterScope(this, call))
         select(table.fetch(fetcher))
     }.fetchPageOrElse(pager) {
         execute()
@@ -33,17 +32,13 @@ inline fun <reified TEntity : Any> Route.list(
     call.respond(result)
 }
 
-interface ListProvider<T : Any> :
-    FetcherProvider<T>,
+class ListScope<T : Any>(
+    override val call: RoutingCall,
+) : FetcherProvider<T>,
     FilterProvider<T>,
     PageProvider,
-    CallProvider,
-    ConditionProvider<T> {
-    class Impl<T : Any>(
-        override val call: RoutingCall,
-    ) : ListProvider<T> {
-        override var fetcher: Fetcher<T>? = null
-        override var filter: (KMutableRootQuery<T>.() -> Unit)? = null
-        override var pager: Pager = Pager()
-    }
+    CallProvider {
+    override var fetcher: Fetcher<T>? = null
+    override var filter: (FilterScope<T>.() -> Unit)? = null
+    override var pager: Pager = Pager()
 }
