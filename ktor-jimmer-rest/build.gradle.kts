@@ -7,7 +7,10 @@ plugins {
 subprojects {
     apply(plugin = "kotlin")
     dependencies {
-        implementation(rootProject.libs.bundles.dependencie)
+        implementation(rootProject.libs.kotlinx.coroutines.core)
+        implementation(rootProject.libs.kotlin.reflect)
+        compileOnly(rootProject.libs.ktor.server.core)
+        compileOnly(rootProject.libs.jimmer)
         testImplementation(rootProject.libs.bundles.test)
     }
     tasks.test {
