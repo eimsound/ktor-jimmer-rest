@@ -12,7 +12,7 @@ import com.eimsound.util.jimmer.fetchPageOrElse
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.list(
-    crossinline block: suspend ListScope<TEntity>.() -> Unit,
+    crossinline block: suspend ListProvider<TEntity>.() -> Unit,
 ) = get {
     val provider = ListScope<TEntity>(call).apply { block() }
 
@@ -32,12 +32,11 @@ inline fun <reified TEntity : Any> Route.list(
     call.respond(result)
 }
 
+interface ListProvider<T : Any> : FetcherProvider<T>, FilterProvider<T>, PageProvider, CallProvider
+
 class ListScope<T : Any>(
     override val call: RoutingCall,
-) : FetcherProvider<T>,
-    FilterProvider<T>,
-    PageProvider,
-    CallProvider {
+) : ListProvider<T> {
     override var fetcher: Fetcher<T>? = null
     override var filter: (FilterScope<T>.() -> Unit)? = null
     override var pager: Pager = Pager()

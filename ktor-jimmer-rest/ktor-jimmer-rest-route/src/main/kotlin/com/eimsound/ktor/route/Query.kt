@@ -17,7 +17,7 @@ import com.eimsound.util.jimmer.entityIdType
 @KtorDsl
 inline fun <reified TEntity : Any> Route.id(
     path: String = Configuration.defaultPathVariable,
-    crossinline block: suspend QueryScope<TEntity>.() -> Unit,
+    crossinline block: suspend QueryProvider<TEntity>.() -> Unit,
 ) = get(path) {
 
     val provider = QueryScope<TEntity>(call).apply { block() }
@@ -38,7 +38,9 @@ inline fun <reified TEntity : Any> Route.id(
     }
 }
 
-class QueryScope<T : Any>(override val call: RoutingCall) : FetcherProvider<T>, CallProvider, KeyProvider<T> {
+interface QueryProvider<T : Any> : FetcherProvider<T>, CallProvider, KeyProvider<T>
+
+class QueryScope<T : Any>(override val call: RoutingCall) : QueryProvider<T> {
     override var fetcher: Fetcher<T>? = null
     override var key: Any? = null
 }

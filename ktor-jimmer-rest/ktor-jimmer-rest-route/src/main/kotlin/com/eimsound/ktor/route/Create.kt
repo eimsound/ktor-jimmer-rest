@@ -15,10 +15,10 @@ import org.babyfish.jimmer.Input
 @KtorDsl
 inline fun <reified TEntity : Any> Route.create(
     path: String = "",
-    crossinline block: suspend CreateScope<TEntity>.(TEntity) -> Unit,
+    crossinline block: suspend CreateProvider<TEntity>.() -> Unit,
 ) = post(path) {
     val body = call.receive<TEntity>()
-    val provider = CreateScope<TEntity>(call).apply { block(body) }.apply {
+    val provider = CreateScope<TEntity>(call).apply { block() }.apply {
         validator?.validate(body)
     }
     val entity = provider.entity?.invoke(body) ?: body
@@ -30,8 +30,9 @@ inline fun <reified TEntity : Any> Route.create(
     call.respond(result.modifiedEntity)
 }
 
-class CreateScope<T : Any>(override val call: RoutingCall) : CallProvider, EntityProvider<T>,
-    ValidatorProvider<T> {
+interface CreateProvider<T : Any> : CallProvider, EntityProvider<T>, ValidatorProvider<T>
+
+class CreateScope<T : Any>(override val call: RoutingCall) : CreateProvider<T> {
     override var entity: ((T) -> T)? = null
     override var validator: (ValidationBuilder.(T) -> Unit)? = null
 }

@@ -14,7 +14,7 @@ import com.eimsound.util.jimmer.entityIdType
 @KtorDsl
 inline fun <reified TEntity : Any> Route.remove(
     path: String = Configuration.defaultPathVariable,
-    crossinline block: suspend RemoveScope<TEntity>.() -> Unit,
+    crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,
 ) = delete(path) {
     val provider = RemoveScope<TEntity>(call).apply { block() }
     val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
@@ -23,8 +23,9 @@ inline fun <reified TEntity : Any> Route.remove(
     call.response.status(HttpStatusCode.OK)
 }
 
-class RemoveScope<T : Any>(override val call: RoutingCall) :
-    CallProvider, KeyProvider<T> {
+interface RemoveProvider<T : Any> : CallProvider, KeyProvider<T>
+
+class RemoveScope<T : Any>(override val call: RoutingCall) : RemoveProvider<T> {
     override var key: Any? = null
 }
 
