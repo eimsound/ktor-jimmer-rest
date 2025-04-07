@@ -11,6 +11,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import org.babyfish.jimmer.Input
+import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
+import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.create(
@@ -23,9 +25,9 @@ inline fun <reified TEntity : Any> Route.create(
     }
     val entity = provider.entity?.invoke(body) ?: body
     val result = if (entity is Input<*>) {
-        sqlClient.insert(entity)
+        sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
     } else {
-        sqlClient.insert(entity)
+        sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
     }
     call.respond(result.modifiedEntity)
 }

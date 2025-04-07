@@ -10,6 +10,7 @@ import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.fetcher.Fetcher
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.jimmer.sqlClient
+import com.eimsound.ktor.provider.Fetchers
 import com.eimsound.util.ktor.defaultPathVariable
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
@@ -26,7 +27,12 @@ inline fun <reified TEntity : Any> Route.id(
     val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
 
     val result = if (fetcher != null) {
-        sqlClient.findById(fetcher, key)
+        when (fetcher) {
+            is Fetchers.Fetch<TEntity> ->
+                sqlClient.findById(fetcher.fetcher, key)
+            is Fetchers.ViewType<TEntity> ->
+                sqlClient.findById(fetcher.viewType, key)
+        }
     } else {
         sqlClient.findById(TEntity::class, key)
     }
@@ -41,6 +47,6 @@ inline fun <reified TEntity : Any> Route.id(
 interface QueryProvider<T : Any> : FetcherProvider<T>, CallProvider, KeyProvider<T>
 
 class QueryScope<T : Any>(override val call: RoutingCall) : QueryProvider<T> {
-    override var fetcher: Fetcher<T>? = null
+    override var fetcher: Fetchers<T>? = null
     override var key: Any? = null
 }

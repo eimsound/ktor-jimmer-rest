@@ -13,7 +13,7 @@ class ValidationUnloadedExceptionCatcher : ValidationExceptionCatcher<UnloadedEx
      * @return ValidationBuilder
      */
     override fun handle(builder: ValidationBuilder, e: UnloadedException): ValidationBuilder {
-        builder.error { "${e.type}.${e.prop} cannot be null" }
+        builder.error { "${e.prop} cannot be null" }
         return builder
     }
 }

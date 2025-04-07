@@ -48,7 +48,7 @@ class ApiScope<T : Any>(override val call: RoutingCall) : ApiProvider<T> {
     override var key: Any? = null
     override var entity: ((T) -> T)? = null
     override var validator: (ValidationBuilder.(T) -> Unit)? = null
-    override var fetcher: Fetcher<T>? = null
+    override var fetcher: Fetchers<T>? = null
     override var filter: (FilterScope<T>.() -> Unit)? = null
     override var pager: Pager = Pager()
 }
