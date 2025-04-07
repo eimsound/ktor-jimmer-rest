@@ -6,7 +6,7 @@ import org.babyfish.jimmer.sql.kt.ast.query.KConfigurableRootQuery
 
 fun <T : Any, R> KConfigurableRootQuery<T, R>.fetchPageOrElse(
     pager: Pager,
-    elseBlock: KConfigurableRootQuery<T, R>.() -> List<R>
+    elseBlock: KConfigurableRootQuery<T, R>.() -> List<Any>
 ) =
     if (pager.enabled) {
         val pageFactory = Configuration.page.pageFactory

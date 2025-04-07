@@ -22,11 +22,11 @@ interface FetcherProvider<T : Any> {
 class FetcherScope<T : Any>(val creator: FetcherCreator<T>)
 
 inline fun <reified T : Any> FetcherProvider<T>.fetcher(block: FetcherScope<T>.() -> Fetcher<T>) {
-    fetcher = Fetchers.Fetch<T>(block(FetcherScope(newFetcher(T::class))))
+    fetcher = Fetchers.Fetch(block(FetcherScope(newFetcher(T::class))))
 }
 
 inline fun <reified T : Any> FetcherProvider<T>.fetcher(viewType: KClass<out View<T>>) {
-    fetcher = Fetchers.ViewType<T>(viewType)
+    fetcher = Fetchers.ViewType(viewType)
 }
 
 @DslMarker

@@ -19,7 +19,7 @@ import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 inline fun <reified TEntity : Any> Route.edit(
     path: String = "",
     crossinline block: suspend EditProvider<TEntity>.() -> Unit,
-) = patch(path) {
+) = put(path) {
     val body = call.receive<TEntity>()
     val provider = EditScope<TEntity>(call).apply { block() }.apply {
         validator?.validate(body)

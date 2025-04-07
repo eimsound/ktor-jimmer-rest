@@ -20,7 +20,7 @@ interface ValidationExceptionCatcher<out T : Throwable> {
 
         init {
             registerValidationExceptionCatcher(
-                UnloadedException::class, ValidationUnloadedExceptionCatcher()
+                UnloadedException::class, ValidationUnloadedExceptionCatcher
             )
         }
 

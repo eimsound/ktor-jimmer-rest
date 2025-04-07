@@ -4,7 +4,7 @@ import com.eimsound.ktor.validator.ValidationBuilder
 import org.babyfish.jimmer.UnloadedException
 
 
-class ValidationUnloadedExceptionCatcher : ValidationExceptionCatcher<UnloadedException> {
+object ValidationUnloadedExceptionCatcher : ValidationExceptionCatcher<UnloadedException> {
     /**
      * jimmer获取为空的值会抛出 UnloadedException 需要捕获
      * @see UnloadedException
