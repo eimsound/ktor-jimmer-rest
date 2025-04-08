@@ -10,6 +10,7 @@ import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.tableName
 import com.eimsound.util.jimmer.tableType
 
+// <ext, parameter>
 typealias ExtParameterMap<T> = Map<String?, Parameter<T>?>
 
 /**
@@ -63,8 +64,7 @@ inline fun <T> ExtParameterMap<T>.defaultValue() = values.firstOrNull()?.value
  * @return ExtParameterMap<T>
  */
 inline fun <reified T : Any> RoutingCall.queryParameterExt(
-    property: KProperty<KExpression<T>>,
-    ext: String? = null
+    property: KProperty<KExpression<T>>
 ): ExtParameterMap<T> {
     val receiver = getPropertyReceiver(property)
     val tableName = tableName(receiver)
@@ -72,7 +72,7 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
     val type = Class.forName(tableType).kotlin
     val name = (tableName.split(".") + property.name).drop(1)
         .joinToString(Configuration.subParameterSeparator)
-    return queryParameterExt(type, name, ext)
+    return queryParameterExt(type, name)
 }
 
 /**
@@ -91,14 +91,13 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
 inline fun <reified T : Any> RoutingCall.queryParameterExt(
     type: KClass<*>,
     name: String,
-    ext: String? = null
 ): ExtParameterMap<T> {
     val nameWithExtList = findQueryParameterNameWithExt(name, Configuration.extParameterSeparator)
     val map = nameWithExtList.map {
         val (parameterName, parameterExt) = it
         val parameter = Parameter<T>(parameterName).apply {
-            this.ext = ext ?: parameterExt
-            this.value = queryParameter(type, this.nameWithExt)
+            this.ext = parameterExt
+            this.value = queryParameter(type, nameWithExt)
         }
         parameter.ext to parameter
     }.toMap()
@@ -118,11 +117,14 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
  * @param ext String?
  * @return ExtParameterMap<T>
  */
-inline fun <reified T : Any> RoutingCall.queryParameterExt(
+inline fun <reified T : Any> RoutingCall.queryParameter(
     name: String,
     ext: String? = null
-): ExtParameterMap<T> = queryParameterExt(T::class, name, ext)
-
+): T? = if (ext == null) {
+    queryParameter(name)
+} else {
+    queryParameterExt<T>(T::class, name)[ext]?.value
+}
 
 /**
  * This extension function for `RoutingCall` retrieves a query parameter by its `name`
@@ -162,9 +164,7 @@ inline fun <T : Any> RoutingCall.queryParameter(type: KClass<*>, name: String): 
  * @param name String
  * @return T?
  */
-inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? {
-    return queryParameter(T::class, name)
-}
+inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? = queryParameter(T::class, name)
 
 /**
  * An extension property for RoutingCall to get the default path variable.

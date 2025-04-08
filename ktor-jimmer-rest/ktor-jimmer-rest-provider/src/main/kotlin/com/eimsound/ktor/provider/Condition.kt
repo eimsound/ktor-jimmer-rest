@@ -17,8 +17,9 @@ inline fun <reified S : KSpecification<*>> FilterScope<*>.specification(): S {
         ?: throw IllegalArgumentException("No primary constructor found for ${S::class.simpleName}")
 
     val parameters = constructor.parameters.map {
+        val propertyName = it.annotations.first { it is JsonProperty } as JsonProperty
         val queryParameter =
-            call.queryParameters[(it.annotations.first { it is JsonProperty } as JsonProperty).value]?.parse(
+            call.queryParameters[propertyName.value]?.parse(
                 it.type.classifier as KClass<*>
             )
         it to queryParameter

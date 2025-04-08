@@ -12,8 +12,8 @@ object ValidationUnloadedExceptionCatcher : ValidationExceptionCatcher<UnloadedE
      * @param e UnloadedException
      * @return ValidationBuilder
      */
-    override fun handle(builder: ValidationBuilder, e: UnloadedException): ValidationBuilder {
-        builder.error { "${e.prop} cannot be null" }
+    override fun handle(builder: ValidationBuilder, e: UnloadedException, message: String): ValidationBuilder {
+        builder.error { message }
         return builder
     }
 }

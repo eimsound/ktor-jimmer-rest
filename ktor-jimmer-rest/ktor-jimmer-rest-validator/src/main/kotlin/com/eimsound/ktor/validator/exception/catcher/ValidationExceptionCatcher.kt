@@ -5,7 +5,7 @@ import org.babyfish.jimmer.UnloadedException
 import kotlin.reflect.KClass
 
 interface ValidationExceptionCatcher<out T : Throwable> {
-    fun handle(builder: ValidationBuilder, e: @UnsafeVariance T): ValidationBuilder
+    fun handle(builder: ValidationBuilder, e: @UnsafeVariance T, message: String): ValidationBuilder
 
     companion object {
 
