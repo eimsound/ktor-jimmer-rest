@@ -2,14 +2,23 @@ package com.eimsound.ktor.provider
 
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.fetcher.Fetcher
+import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.fetcher.FetcherCreator
 import org.babyfish.jimmer.sql.kt.fetcher.newFetcher
 import kotlin.reflect.KClass
 
-sealed class Fetchers<T: Any>{
-    data class Fetch<T: Any>(val fetcher: Fetcher<T>) : Fetchers<T>()
-    data class ViewType<T: Any>(val viewType: KClass<out View<T>>) : Fetchers<T>()
 
+@DslMarker
+annotation class FetcherDslMarker
+
+sealed class Fetchers<T : Any> {
+    data class Fetch<T : Any>(val fetcher: Fetcher<T>) : Fetchers<T>()
+    data class ViewType<T : Any>(val viewType: KClass<out View<T>>) : Fetchers<T>()
+
+    operator fun invoke(table: KNonNullTable<T>) = when (this) {
+        is ViewType -> table.fetch(viewType)
+        is Fetch -> table.fetch(fetcher)
+    }
 }
 
 @FetcherDslMarker
@@ -28,6 +37,3 @@ inline fun <reified T : Any> FetcherProvider<T>.fetcher(block: FetcherScope<T>.(
 inline fun <reified T : Any> FetcherProvider<T>.fetcher(viewType: KClass<out View<T>>) {
     fetcher = Fetchers.ViewType(viewType)
 }
-
-@DslMarker
-annotation class FetcherDslMarker

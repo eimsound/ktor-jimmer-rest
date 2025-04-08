@@ -6,14 +6,13 @@ import com.eimsound.ktor.provider.KeyProvider
 import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
-import org.babyfish.jimmer.sql.fetcher.Fetcher
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.jimmer.sqlClient
 import com.eimsound.ktor.provider.Fetchers
 import com.eimsound.util.ktor.defaultPathVariable
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
+import io.ktor.utils.io.*
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.id(
@@ -50,3 +49,4 @@ class QueryScope<T : Any>(override val call: RoutingCall) : QueryProvider<T> {
     override var fetcher: Fetchers<T>? = null
     override var key: Any? = null
 }
+

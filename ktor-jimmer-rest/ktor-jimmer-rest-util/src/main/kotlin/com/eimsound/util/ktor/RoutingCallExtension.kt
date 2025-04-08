@@ -9,6 +9,10 @@ import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.tableName
 import com.eimsound.util.jimmer.tableType
+import com.fasterxml.jackson.annotation.JsonProperty
+import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.primaryConstructor
 
 // <ext, parameter>
 typealias ExtParameterMap<T> = Map<String?, Parameter<T>?>
@@ -178,3 +182,30 @@ inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? = quer
 val RoutingCall.defaultPathVariable
     get() = pathParameters[pathParameters.names().first()]
         ?: throw IllegalStateException("path variable not found")
+
+/**
+ * function for RoutingCall to find query parameters with a specific separator.
+ * @param specificationType KClass<out KSpecification<T>>
+ * @param call RoutingCall
+ * @return KSpecification<T>
+ */
+inline fun <T : Any> specification(
+    specificationType: KClass<out KSpecification<T>>,
+    call: RoutingCall
+): KSpecification<T> {
+    val constructor = specificationType.primaryConstructor
+        ?: throw IllegalArgumentException("No primary constructor found for ${specificationType.qualifiedName}")
+
+    val parameters = constructor.parameters.map {
+        val propertyName = it.findAnnotation<JsonProperty>()?.value ?: it.name
+        ?: throw IllegalArgumentException("No property name found for ${specificationType.qualifiedName}: ${it.name}")
+
+        val queryParameter =
+            call.queryParameters[propertyName]?.parse(
+                it.type.classifier as KClass<*>
+            )
+        it to queryParameter
+    }.toMap()
+    val instance = constructor.callBy(parameters)
+    return instance
+}

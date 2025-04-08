@@ -109,7 +109,7 @@ open class ValidationBuilder() {
 }
 
 
-inline fun <reified T : Any> validate(body: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
+inline fun <T : Any> validate(body: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
     val validationBuilder = ValidationBuilder()
     val result = runCatching {
         validationBuilder.apply { block(body) }
