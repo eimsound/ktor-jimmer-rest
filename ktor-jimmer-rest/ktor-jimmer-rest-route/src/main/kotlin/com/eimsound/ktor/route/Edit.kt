@@ -5,6 +5,8 @@ import com.eimsound.ktor.provider.InputProvider
 import com.eimsound.ktor.provider.ValidatorProvider
 import com.eimsound.jimmer.sqlClient
 import com.eimsound.ktor.provider.Inputs
+import com.eimsound.ktor.provider.TransformProvider
+import com.eimsound.ktor.provider.Transformers
 import com.eimsound.ktor.provider.Validators
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -29,6 +31,7 @@ inline fun <reified TEntity : Any> Route.edit(
             sqlClient.entities.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
 
         }
+
         is Inputs.InputEntity -> {
             val entity = call.receive(input.inputType)
             provider.run { validator?.invoke(entity) }
@@ -39,9 +42,10 @@ inline fun <reified TEntity : Any> Route.edit(
     call.respond(result.modifiedEntity)
 }
 
-interface EditProvider<T : Any> : CallProvider, InputProvider<T>, ValidatorProvider<T>
+interface EditProvider<T : Any> : CallProvider, InputProvider<T>, ValidatorProvider, TransformProvider<T>
 
 class EditScope<T : Any>(override val call: RoutingCall) : EditProvider<T> {
-    override  var input: Inputs<T> = Inputs.Entity as Inputs<T>
+    override var input: Inputs<T> = Inputs.Entity as Inputs<T>
     override var validator: Validators? = null
+    override var transformer: Transformers<T>? = null
 }

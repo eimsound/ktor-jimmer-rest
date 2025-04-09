@@ -26,13 +26,13 @@ sealed class Validators {
     }
 }
 
-interface ValidatorProvider<T : Any> {
+interface ValidatorProvider {
     var validator: Validators?
 }
 
-fun <T : Any> ValidatorProvider<T>.validator(block: ValidationBuilder.(T) -> Unit) {
-    validator = Validators.Entity(block)
-}
+//fun <T : Any> ValidatorProvider<T>.validator(block: ValidationBuilder.(T) -> Unit) {
+//    validator = Validators.Entity(block)
+//}
 //
 //@JvmName("validatorInput")
 //fun <TInput : Input<*>> ValidatorProvider<*>.validator(block: ValidationBuilder.(TInput) -> Unit) {

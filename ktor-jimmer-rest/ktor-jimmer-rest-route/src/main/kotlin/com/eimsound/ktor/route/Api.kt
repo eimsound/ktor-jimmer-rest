@@ -10,7 +10,7 @@ import io.ktor.utils.io.*
 @JvmName("api")
 inline fun <reified TEntity : Any> Route.api(
     path: String,
-    pathVariable: String = Configuration.defaultPathVariable,
+    pathVariable: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend ApiScope<TEntity>.() -> Unit,
 ) = route(path) {
     id<TEntity>(pathVariable) {
@@ -28,11 +28,13 @@ inline fun <reified TEntity : Any> Route.api(
         val scope = ApiScope<TEntity>(call).apply { block() }
         input = scope.input
         validator = scope.validator
+        transformer = scope.transformer
     }
     edit<TEntity> {
         val scope = ApiScope<TEntity>(call).apply { block() }
         input = scope.input
         validator = scope.validator
+        transformer = scope.transformer
     }
     remove<TEntity>(pathVariable) {
         val scope = ApiScope<TEntity>(call).apply { block() }
@@ -41,12 +43,16 @@ inline fun <reified TEntity : Any> Route.api(
 }
 
 
-class ApiScope<T : Any>(override val call: RoutingCall) : QueryProvider<T>, ListProvider<T>,
+class ApiScope<T : Any>(
+    override val call: RoutingCall,
+
+    ) : QueryProvider<T>, ListProvider<T>,
     EditProvider<T>, CreateProvider<T>, RemoveProvider<T> {
     override var key: Any? = null
     override var input: Inputs<T> = Inputs.Entity as Inputs<T>
     override var validator: Validators? = null
     override var fetcher: Fetchers<T>? = null
     override var filter: Filters<T>? = null
+    override var transformer: Transformers<T>? = null
     override var pager: Pager = Pager()
 }

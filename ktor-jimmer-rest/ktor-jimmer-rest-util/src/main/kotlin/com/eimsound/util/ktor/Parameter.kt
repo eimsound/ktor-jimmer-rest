@@ -15,7 +15,7 @@ import com.eimsound.ktor.config.Configuration
 class Parameter<T>(val name: String) {
     // 比如 ge le exact
     var ext: String? = null
-    val separator get() = Configuration.extParameterSeparator
+    val separator get() = Configuration.router.extParameterSeparator
     val hasExt get() = ext != null
     // 比如 createTime__ge createTime__le name__exact
     val nameWithExt: String get() = name + if (hasExt) separator + ext else ""

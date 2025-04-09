@@ -13,7 +13,7 @@ import com.eimsound.util.jimmer.entityIdType
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.remove(
-    path: String = Configuration.defaultPathVariable,
+    path: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,
 ) = delete(path) {
     val provider = RemoveScope<TEntity>(call).apply { block() }

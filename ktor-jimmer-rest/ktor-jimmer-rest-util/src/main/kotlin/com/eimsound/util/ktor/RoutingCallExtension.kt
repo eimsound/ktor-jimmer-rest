@@ -8,7 +8,6 @@ import kotlin.reflect.KProperty
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.tableName
-import com.eimsound.util.jimmer.tableType
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import kotlin.reflect.full.findAnnotation
@@ -29,7 +28,7 @@ typealias ExtParameterMap<T> = Map<String?, Parameter<T>?>
  * @param separator The separator used to split the parameter names.
  * @return A list of pairs of parameter name and optional extension.
  */
-fun RoutingCall.findQueryParameterNameWithExt(name: String, separator: String): List<Pair<String, String?>> {
+inline fun RoutingCall.findQueryParameterNameWithExt(name: String, separator: String): List<Pair<String, String?>> {
     val names = queryParameters.names()
     val list = names.filter { it.startsWith(name) }.map {
         val parameter = it.split(separator)
@@ -72,11 +71,10 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
 ): ExtParameterMap<T> {
     val receiver = getPropertyReceiver(property)
     val tableName = tableName(receiver)
-    val tableType = tableType(receiver)
-    val type = Class.forName(tableType).kotlin
+//    val tableType = tableType(receiver)
     val name = (tableName.split(".") + property.name).drop(1)
-        .joinToString(Configuration.subParameterSeparator)
-    return queryParameterExt(type, name)
+        .joinToString(Configuration.router.subParameterSeparator)
+    return queryParameterExt<T>(T::class, name)
 }
 
 /**
@@ -87,16 +85,16 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
  * It returns a map of parameter name and optional extension.
  *
  * @receiver RoutingCall
- * @param type KClass<*>
+ * @param type KClass<T>
  * @param name String
  * @param ext String?
  * @return ExtParameterMap<T>
  */
 inline fun <reified T : Any> RoutingCall.queryParameterExt(
-    type: KClass<*>,
+    type: KClass<T>,
     name: String,
 ): ExtParameterMap<T> {
-    val nameWithExtList = findQueryParameterNameWithExt(name, Configuration.extParameterSeparator)
+    val nameWithExtList = findQueryParameterNameWithExt(name, Configuration.router.extParameterSeparator)
     val map = nameWithExtList.map {
         val (parameterName, parameterExt) = it
         val parameter = Parameter<T>(parameterName).apply {
@@ -147,9 +145,9 @@ inline fun <reified T : Any> RoutingCall.queryParameter(
  * @param name String
  * @return T? The parsed query parameter value or null if not present or unparsable.
  */
-inline fun <T : Any> RoutingCall.queryParameter(type: KClass<*>, name: String): T? {
+inline fun <T : Any> RoutingCall.queryParameter(type: KClass<T>, name: String): T? {
     val serializable = queryParameters[name]?.parse(type)
-    return serializable as T?
+    return serializable
 }
 
 /**

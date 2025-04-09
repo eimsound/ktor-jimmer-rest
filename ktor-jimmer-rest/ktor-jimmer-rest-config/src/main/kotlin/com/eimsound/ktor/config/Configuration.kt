@@ -4,12 +4,11 @@ import org.babyfish.jimmer.sql.kt.KSqlClient
 
 
 object Configuration {
-    var extParameterSeparator = "__"
-    var subParameterSeparator = "_"
+    val router = RouterConfiguration()
 
-    var defaultPathVariable = "{id}"
+    val parser = ParserConfiguration()
 
-    val page = PageConfiguration()
+    val pager = PagerConfiguration()
 
     lateinit var sqlClientFactory: () -> Lazy<KSqlClient>
 }

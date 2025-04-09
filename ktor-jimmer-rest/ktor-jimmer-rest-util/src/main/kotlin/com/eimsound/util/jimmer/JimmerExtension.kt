@@ -9,7 +9,7 @@ fun <T : Any, R> KConfigurableRootQuery<T, R>.fetchPageOrElse(
     elseBlock: KConfigurableRootQuery<T, R>.() -> List<Any>
 ) =
     if (pager.enabled) {
-        val pageFactory = Configuration.page.pageFactory
+        val pageFactory = Configuration.pager.pageFactory
         if (pageFactory != null) {
             fetchPage(pager.pageIndex, pager.pageSize, pageFactory = pageFactory)
         } else {

@@ -16,7 +16,7 @@ import io.ktor.utils.io.*
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.id(
-    path: String = Configuration.defaultPathVariable,
+    path: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend QueryProvider<TEntity>.() -> Unit,
 ) = get(path) {
 

@@ -18,23 +18,29 @@ inline fun <reified TEntity : Any> Route.create(
     val input = provider.input
     val result = when (input) {
         is Inputs.Entity -> {
-            val entity = call.receive<TEntity>()
-            provider.run { validator?.invoke(entity) }
+            val body = call.receive<TEntity>()
+            provider.run { validator?.invoke(body) }
+            val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
         }
+
         is Inputs.InputEntity -> {
-            val entity = call.receive(input.inputType)
-            provider.run { validator?.invoke(entity) }
+            val body = call.receive(input.inputType)
+            provider.run { validator?.invoke(body) }
+            val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
         }
     }
     call.respond(result.modifiedEntity)
 }
 
-interface CreateProvider<T : Any> : CallProvider, InputProvider<T>, ValidatorProvider<T>
+interface CreateProvider<T : Any> : CallProvider, InputProvider<T>, TransformProvider<T>
 
-class CreateScope<T : Any>(override val call: RoutingCall) : CreateProvider<T> {
+class CreateScope<T : Any>(
+    override val call: RoutingCall
+) : CreateProvider<T> {
     override var input: Inputs<T> = Inputs.Entity as Inputs<T>
     override var validator: Validators? = null
+    override var transformer: Transformers<T>? = null
 }
 

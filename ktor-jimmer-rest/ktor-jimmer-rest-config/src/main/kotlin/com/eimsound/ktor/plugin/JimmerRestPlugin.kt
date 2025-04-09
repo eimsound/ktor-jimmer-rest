@@ -7,16 +7,24 @@ val JimmerRest = createApplicationPlugin(
     name = "JimmerRestPlugin",
     createConfiguration = ::JimmerRestConfiguration
 ) {
-    Configuration.page.defaultPageSize = pluginConfig.pageConfiguration.defaultPageSize
-    Configuration.page.defaultPageIndex = pluginConfig.pageConfiguration.defaultPageIndex
-    Configuration.page.enabledPage = pluginConfig.pageConfiguration.enabledPage
-    Configuration.page.pageIndexParameterName = pluginConfig.pageConfiguration.pageIndexParameterName
-    Configuration.page.pageSizeParameterName = pluginConfig.pageConfiguration.pageSizeParameterName
-    Configuration.page.pageFactory = pluginConfig.pageConfiguration.pageFactory
-
-    Configuration.defaultPathVariable = pluginConfig.defaultPathVariable
-    Configuration.subParameterSeparator = pluginConfig.subParameterSeparator
-    Configuration.extParameterSeparator = pluginConfig.extParameterSeparator
-
+    val pageConfiguration = pluginConfig.pageConfiguration
+    Configuration.pager.apply{
+        defaultPageIndex = pageConfiguration.defaultPageIndex
+        defaultPageSize = pageConfiguration.defaultPageSize
+        enabledPage = pageConfiguration.enabledPage
+        pageIndexParameterName = pageConfiguration.pageIndexParameterName
+        pageSizeParameterName = pageConfiguration.pageSizeParameterName
+        pageFactory = pageConfiguration.pageFactory
+    }
+    val parserConfiguration = pluginConfig.parserConfiguration
+    Configuration.parser.apply {
+        parsers.putAll(parserConfiguration.parsers)
+    }
+    val routerConfiguration = pluginConfig.routerConfiguration
+    Configuration.router.apply{
+        extParameterSeparator = routerConfiguration.extParameterSeparator
+        subParameterSeparator = routerConfiguration.subParameterSeparator
+        defaultPathVariable = routerConfiguration.defaultPathVariable
+    }
     Configuration.sqlClientFactory = pluginConfig.jimmerSqlClientFactory
 }
