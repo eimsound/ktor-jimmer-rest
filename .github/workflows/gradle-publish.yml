@@ -38,6 +38,11 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
+      - name: Show libs
+        run: |
+          ls
+          ls build/libs
+          ls build/publications/mavenJava
 #      - name: Run tests
 #        run: ./gradlew test
 
@@ -49,12 +54,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          name: Release ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           files: |
-            build/libs/*.jar
-            build/publications/mavenJava/*.pom
+            ${{ github.workspace }}/build/libs/*.jar
+            ${{ github.workspace }}/build/publications/mavenJava/*.pom
