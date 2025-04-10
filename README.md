@@ -11,6 +11,16 @@ based on [Ktor](https://github.com/ktorio/ktor) and [Jimmer](https://github.com/
 </a>
 
 ## Start
+Add it in your settings.gradle(.kts)
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
 
 Add ``ktor-jimmer-rest`` to your project
 
@@ -30,21 +40,26 @@ install(JimmerRest) {
 
 ## Usage
 
-Provides five types of routes (``create | remove | edit | id | list``). For detailed usage, refer to
+Provides routes (``create | remove | edit | id | list | api``). For detailed usage, refer to
 the [documentation](https://github.com/eimsound/ktor-jimmer-rest). Here, the ``list`` is used as an example.
 
 ```kotlin
 list<Book> {
+    // use specification dto or filter dsl
+    // filter(BookSpec::class)
     filter {
         where(
             `ilike?`(table::name),
             `ilike?`(table.store::name),
-            `between?`(table::price)
+            `between?`(table::price),
+            table.edition.`between?`(get("price", "le"), this["price", "ge"])
         )
         orderBy(table.id.desc())
     }
+    // use view dto or fetcher dsl
+    // fetcher(BookView::class)
     fetcher {
-        by {
+        creator.by {
             allScalarFields()
             name()
             store {
@@ -70,5 +85,5 @@ list<Book> {
   `` __anywhere | __exact | __start | __end ``, which correspond to different filtering functions, see
   the [documentation](https://github.com/eimsound/ktor-jimmer-rest) for details
 * fetcher then continues to use the functionality of jimmer, jimmer is indeed a very powerful orm framework, and writing
-  it is very elegant, please refer to jimmer's [documentation](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/welcome)
+  it is very elegant, please refer to [jimmer's documentation](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/welcome)
   for details
