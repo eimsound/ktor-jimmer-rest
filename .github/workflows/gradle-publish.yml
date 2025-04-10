@@ -61,6 +61,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          name: ${{ steps.version.outputs.version }}
-          body: Release ${{ steps.version.outputs.version }}
-          files: build/libs/*
+          files: build/libs/*.jar
+
