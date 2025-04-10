@@ -40,9 +40,11 @@ jobs:
 
       - name: Show libs
         run: |
+          pwd
+          echo "-- dir --"
           ls
+          echo "-- release --"
           ls build/libs
-          ls build/publications/mavenJava
 #      - name: Run tests
 #        run: ./gradlew test
 
@@ -60,6 +62,5 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           name: ${{ steps.version.outputs.version }}
-          files: |
-            ${{ github.workspace }}/build/libs/*.jar
-            ${{ github.workspace }}/build/publications/mavenJava/*.pom
+          body: Release ${{ steps.version.outputs.version }}
+          files: build/libs/*
