@@ -10,11 +10,15 @@ name: Gradle Package
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    defaults: # 👇 设置全局默认工作目录
+      run:
+        working-directory: ./ktor-jimmer-rest  # 所有步骤的默认目录
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
