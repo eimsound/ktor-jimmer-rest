@@ -33,7 +33,6 @@ jobs:
           cache: 'gradle'
 
       - name: Grant execute permission for gradlew
-        if: matrix.gradle
         run: chmod +x gradlew
 
       - name: Build with Gradle
@@ -46,7 +45,7 @@ jobs:
         id: version
         run: |
           # 从 Git 标签提取版本号（例如 v1.0.0 → 1.0.0）
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=$(echo "$GITHUB_REF" | sed -e 's#^refs/tags/##' -e 's/^v//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -58,4 +57,4 @@ jobs:
           name: Release ${{ steps.version.outputs.version }}
           files: |
             build/libs/*.jar
-            build/publications/maven/*.pom
+            build/publications/mavenJava/*.pom
