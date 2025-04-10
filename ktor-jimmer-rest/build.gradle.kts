@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     `maven-publish`
     signing
+    `java-library`
 }
 
 subprojects {

@@ -1,0 +1,5 @@
+jdk:
+  - openjdk17
+subdirectory: "ktor-jimmer-rest"  # 指定子目录路径
+install:
+  - ./gradlew build  # 根据项目需求调整构建命令
