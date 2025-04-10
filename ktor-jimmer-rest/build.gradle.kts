@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `maven-publish`
-    signing
     `java-library`
 }
 
@@ -40,14 +39,12 @@ tasks.jar {
 
     dependsOn(tasks.withType(GenerateMavenPom::class))
     into("META-INF") {
-        from("${project.layout.buildDirectory.get()}/publications/mavenJava")
+        from("${project.layout.buildDirectory.get()}/publications/maven")
         exclude("*.asc")
         rename { it.replace("pom-default.xml", "pom.xml") }
     }
     from(subprojects.map { it.sourceSets.main.get().output })
 }
-
-
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
@@ -60,6 +57,8 @@ publishing {
             version = version
 
             from(components["java"])
+            artifact(tasks["kotlinSourcesJar"])
+            artifact(tasks["javadocJarMerger"])
 
             pom {
                 name.set(project.name)
@@ -87,21 +86,6 @@ publishing {
         }
     }
 
-    repositories {
-        maven {
-            name = "mavenCentral"
-            val releasesRepoUrl = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            val snapshotsRepoUrl = uri("https://oss.sonatype.org/content/repositories/snapshots")
-            url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
-            credentials {
-                username = System.getProperty("SONATYPE_NEXUS_USERNAME")
-                password = System.getProperty("SONATYPE_NEXUS_PASSWORD")
-            }
-        }
-    }
-    signing {
-        sign(publishing.publications["mavenJava"])
-    }
 
     tasks.withType<GenerateModuleMetadata> {
         enabled = false

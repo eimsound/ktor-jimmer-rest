@@ -5,4 +5,4 @@ install:
   - cd ./ktor-jimmer-rest
   - pwd
   - chmod +x gradlew        # 确保 gradlew 有执行权限（可选）
-  - ./gradlew build  # 根据项目需求调整构建命令
+  - ./gradlew publishToMavenLocal  # 根据项目需求调整构建命令
