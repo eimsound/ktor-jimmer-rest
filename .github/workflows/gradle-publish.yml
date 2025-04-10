@@ -38,6 +38,9 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
+      #      - name: Run tests
+      #        run: ./gradlew test
+
       - name: Show libs
         run: |
           pwd
@@ -45,8 +48,6 @@ jobs:
           ls
           echo "-- release --"
           ls build/libs
-#      - name: Run tests
-#        run: ./gradlew test
 
       - name: Determine release version
         id: version
@@ -55,11 +56,24 @@ jobs:
           VERSION=$(echo "$GITHUB_REF" | sed -e 's#^refs/tags/##' -e 's/^v//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          files: build/libs/*.jar
-
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/libs/ktor-jimmer-rest-${{ steps.version.outputs.version }}.jar
+          asset_name: ktor-jimmer-rest-${{ steps.version.outputs.version }}.jar
+          asset_content_type: application/java-archive
