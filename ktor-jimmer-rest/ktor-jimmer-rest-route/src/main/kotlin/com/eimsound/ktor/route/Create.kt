@@ -15,18 +15,19 @@ inline fun <reified TEntity : Any> Route.create(
     crossinline block: suspend CreateProvider<TEntity>.() -> Unit,
 ) = post(path) {
     val provider = CreateScope<TEntity>(call).apply { block() }
+    val validator = provider.validator
     val input = provider.input
     val result = when (input) {
         is Inputs.Entity -> {
             val body = call.receive<TEntity>()
-            provider.run { validator?.invoke(body) }
+            validator?.invoke(body)
             val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
         }
 
         is Inputs.InputEntity -> {
             val body = call.receive(input.inputType)
-            provider.run { validator?.invoke(body) }
+            validator?.invoke(body)
             val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.INSERT_ONLY, AssociatedSaveMode.MERGE)
         }

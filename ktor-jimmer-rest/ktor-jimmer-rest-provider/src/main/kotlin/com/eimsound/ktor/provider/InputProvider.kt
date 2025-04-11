@@ -9,7 +9,9 @@ annotation class InputDslMarker
 
 sealed class Inputs<T> {
     object Entity : Inputs<Any>()
-    data class InputEntity<T>(val inputType: KClass<out Input<T>>) : Inputs<T>()
+    data class InputEntity<T : Any>(
+        val inputType: KClass<out Input<T>>
+    ) : Inputs<T>()
 }
 
 @InputDslMarker
@@ -19,16 +21,16 @@ interface InputProvider<T : Any> : ValidatorProvider, TransformProvider<T> {
 
 @InputDslMarker
 class InputScope<T : Any, TInput : Input<T>>(
-    var validator: Validators? = null,
+    var validator: Validators.InputEntity<T, TInput>? = null,
 ) {
     fun validator(block: ValidationBuilder.(TInput) -> Unit) {
-        validator = Validators.InputEntity<TInput>(block)
+        validator = Validators.InputEntity<T, TInput>(block)
     }
 }
 
 @InputDslMarker
 class EntityScope<T : Any>(
-    var validator: Validators? = null,
+    var validator: Validators.Entity<T>? = null,
 ) {
     fun validator(block: ValidationBuilder.(T) -> Unit) {
         validator = Validators.Entity<T>(block)
@@ -49,7 +51,7 @@ fun <T : Any, TInput : Input<T>> InputProvider<T>.input(
     block: InputScope<T, TInput>.() -> Unit
 ) = run {
     val scope = InputScope<T, TInput>().apply { block() }
-    input = Inputs.InputEntity(type)
+    input = Inputs.InputEntity<T>(type)
     validator = scope.validator
     InputEntityTransformBuilder<T, TInput>(this)
 }

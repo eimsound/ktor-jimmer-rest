@@ -1,5 +1,7 @@
 package com.eimsound.ktor.provider
 
+import com.eimsound.ktor.provider.Fetchers.Fetch
+import com.eimsound.ktor.provider.Fetchers.ViewType
 import org.babyfish.jimmer.View
 import org.babyfish.jimmer.sql.fetcher.Fetcher
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
@@ -15,11 +17,14 @@ sealed class Fetchers<T : Any> {
     data class Fetch<T : Any>(val fetcher: Fetcher<T>) : Fetchers<T>()
     data class ViewType<T : Any>(val viewType: KClass<out View<T>>) : Fetchers<T>()
 
-    operator fun invoke(table: KNonNullTable<T>) = when (this) {
+
+}
+
+operator fun <T : Any> Fetchers<T>.invoke(table: KNonNullTable<T>) =
+    when (this) {
         is ViewType -> table.fetch(viewType)
         is Fetch -> table.fetch(fetcher)
     }
-}
 
 @FetcherDslMarker
 interface FetcherProvider<T : Any> {

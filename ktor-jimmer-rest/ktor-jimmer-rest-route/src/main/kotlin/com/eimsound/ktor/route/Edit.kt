@@ -15,28 +15,27 @@ import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 
-
 @KtorDsl
 inline fun <reified TEntity : Any> Route.edit(
     path: String = "",
     crossinline block: suspend EditProvider<TEntity>.() -> Unit,
 ) = put(path) {
-    val body = call.receive<TEntity>()
     val provider = EditScope<TEntity>(call).apply { block() }
     val input = provider.input
+    val validator = provider.validator
     val result = when (input) {
         is Inputs.Entity -> {
-            val entity = call.receive<TEntity>()
-            provider.run { validator?.invoke(entity) }
+            val body = call.receive<TEntity>()
+            validator?.invoke(body)
+            val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
-
         }
 
         is Inputs.InputEntity -> {
-            val entity = call.receive(input.inputType)
-            provider.run { validator?.invoke(entity) }
+            val body = call.receive(input.inputType)
+            validator?.invoke(body)
+            val entity = provider.transformer?.transform(body) ?: body
             sqlClient.entities.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
-
         }
     }
     call.respond(result.modifiedEntity)

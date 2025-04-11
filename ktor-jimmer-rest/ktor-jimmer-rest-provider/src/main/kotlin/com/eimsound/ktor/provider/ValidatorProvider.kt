@@ -8,7 +8,7 @@ import org.babyfish.jimmer.Input
 
 sealed class Validators {
     data class Entity<T : Any>(val validate: ValidationBuilder.(T) -> Unit) : Validators()
-    data class InputEntity<TInput : Input<*>>(val validate: ValidationBuilder.(TInput) -> Unit) :
+    data class InputEntity<T : Any, TInput : Input<T>>(val validate: ValidationBuilder.(TInput) -> Unit) :
         Validators()
 
     operator inline fun <T : Any> invoke(body: T) {
@@ -16,7 +16,7 @@ sealed class Validators {
     }
 
     operator inline fun <T : Any, TInput : Input<T>> invoke(body: TInput) {
-        validate(body, (this as InputEntity<TInput>).validate).`throw`()
+        validate(body, (this as InputEntity<T, TInput>).validate).`throw`()
     }
 
     inline fun ValidationResult.`throw`() = let {

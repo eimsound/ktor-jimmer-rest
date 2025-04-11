@@ -1,9 +1,12 @@
 package com.eimsound.ktor.provider
 
+import com.eimsound.ktor.provider.Filters.Filter
+import com.eimsound.ktor.provider.Filters.Specification
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.specification
 import io.ktor.server.routing.*
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery
+import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import kotlin.reflect.KClass
 
@@ -14,10 +17,12 @@ annotation class FilterDslMarker
 sealed class Filters<T : Any> {
     data class Filter<T : Any>(val filter: (query: KMutableQuery<T>, call: RoutingCall) -> Unit) : Filters<T>()
     data class Specification<T : Any>(val specification: (call: RoutingCall) -> KSpecification<T>) : Filters<T>()
+}
 
-    operator fun invoke(query: KMutableQuery<T>, call: RoutingCall) = when (this) {
-        is Filter -> filter.invoke(query, call)
-        is Specification -> specification
+operator fun <T : Any> Filters<T>?.invoke(query: KMutableRootQuery<T>, call: RoutingCall) = this?.run {
+    when (this) {
+        is Filter -> filter(query, call)
+        is Specification -> query.where(specification(call))
     }
 }
 
