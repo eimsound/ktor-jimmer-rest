@@ -4,14 +4,10 @@ import com.eimsound.ktor.provider.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import com.eimsound.jimmer.sqlClient
-import com.eimsound.ktor.provider.Filters.Filter
-import com.eimsound.ktor.provider.Filters.Specification
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.Pager
 import com.eimsound.util.jimmer.fetchPageOrElse
 import io.ktor.utils.io.*
-import org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery
-import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.list(
@@ -27,8 +23,8 @@ inline fun <reified TEntity : Any> Route.list(
     val fetcher = provider.fetcher
 
     val result = sqlClient.createQuery(TEntity::class) {
-        filter(this, call)
-        select(fetcher?.invoke(table) ?: table)
+        filter.invoke(this, call)
+        select(fetcher.invoke(table) ?: table)
     }.fetchPageOrElse(pager) {
         execute()
     }

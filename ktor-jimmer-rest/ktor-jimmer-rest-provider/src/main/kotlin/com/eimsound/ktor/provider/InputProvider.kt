@@ -8,14 +8,14 @@ import kotlin.reflect.KClass
 annotation class InputDslMarker
 
 sealed class Inputs<T> {
-    object Entity : Inputs<Any>()
+    class Entity<T> : Inputs<T>()
     data class InputEntity<T : Any>(
         val inputType: KClass<out Input<T>>
     ) : Inputs<T>()
 }
 
 @InputDslMarker
-interface InputProvider<T : Any> : ValidatorProvider, TransformProvider<T> {
+interface InputProvider<T : Any> : ValidatorProvider<T>, TransformProvider<T> {
     var input: Inputs<T>
 }
 
@@ -37,16 +37,16 @@ class EntityScope<T : Any>(
     }
 }
 
-fun <T : Any> InputProvider<T>.input(
+inline fun <T : Any> InputProvider<T>.input(
     block: EntityScope<T>.() -> Unit
 ) = run {
     val scope = EntityScope<T>().apply { block() }
-    input = Inputs.Entity as Inputs<T>
+    input = Inputs.Entity()
     validator = scope.validator
     EntityTransformBuilder<T>(this)
 }
 
-fun <T : Any, TInput : Input<T>> InputProvider<T>.input(
+inline fun <T : Any, TInput : Input<T>> InputProvider<T>.input(
     type: KClass<TInput>,
     block: InputScope<T, TInput>.() -> Unit
 ) = run {

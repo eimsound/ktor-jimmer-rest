@@ -28,6 +28,9 @@ open class ValidationBuilder() {
         }
     }
 
+    fun <T : Any> KProperty<T?>.validate(predicate: T.() -> Boolean, message: () -> String): KProperty<T?> =
+        this@validate.validate(message(), predicate)
+
     fun <T : Any> KProperty<T?>.notNull(message: () -> String): KProperty<T?> =
         this@notNull.validate(message()) {
             this != null
@@ -109,7 +112,7 @@ open class ValidationBuilder() {
 }
 
 
-inline fun <T : Any> validate(body: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
+fun <T : Any> validate(body: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
     val validationBuilder = ValidationBuilder()
     val result = runCatching {
         validationBuilder.apply { block(body) }

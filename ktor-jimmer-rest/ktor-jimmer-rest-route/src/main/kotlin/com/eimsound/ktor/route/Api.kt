@@ -43,14 +43,11 @@ inline fun <reified TEntity : Any> Route.api(
 }
 
 
-class ApiScope<T : Any>(
-    override val call: RoutingCall,
-
-    ) : QueryProvider<T>, ListProvider<T>,
+class ApiScope<T : Any>(override val call: RoutingCall) : QueryProvider<T>, ListProvider<T>,
     EditProvider<T>, CreateProvider<T>, RemoveProvider<T> {
     override var key: Any? = null
-    override var input: Inputs<T> = Inputs.Entity as Inputs<T>
-    override var validator: Validators? = null
+    override var input: Inputs<T> = Inputs.Entity()
+    override var validator: Validators<T>? = null
     override var fetcher: Fetchers<T>? = null
     override var filter: Filters<T>? = null
     override var transformer: Transformers<T>? = null

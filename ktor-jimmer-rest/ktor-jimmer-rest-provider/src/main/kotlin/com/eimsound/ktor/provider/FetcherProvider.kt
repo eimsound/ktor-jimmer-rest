@@ -16,15 +16,14 @@ annotation class FetcherDslMarker
 sealed class Fetchers<T : Any> {
     data class Fetch<T : Any>(val fetcher: Fetcher<T>) : Fetchers<T>()
     data class ViewType<T : Any>(val viewType: KClass<out View<T>>) : Fetchers<T>()
-
-
 }
 
-operator fun <T : Any> Fetchers<T>.invoke(table: KNonNullTable<T>) =
+operator inline fun <T : Any> Fetchers<T>?.invoke(table: KNonNullTable<T>) = this?.run {
     when (this) {
         is ViewType -> table.fetch(viewType)
         is Fetch -> table.fetch(fetcher)
     }
+}
 
 @FetcherDslMarker
 interface FetcherProvider<T : Any> {
