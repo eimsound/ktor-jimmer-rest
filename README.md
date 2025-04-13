@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 Add ``ktor-jimmer-rest`` to your project
 
 ```kotlin
-implementation("com.eimsound:ktor-jimmer-rest")
+implementation("com.github.eimsound:ktor-jimmer-rest")
 ```
 
 Use the JimmerRest plugin in your project
