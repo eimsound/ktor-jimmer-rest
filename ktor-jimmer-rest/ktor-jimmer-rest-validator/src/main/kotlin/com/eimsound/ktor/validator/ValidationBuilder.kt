@@ -10,9 +10,9 @@ import kotlin.reflect.KProperty
 import kotlin.text.isNotBlank
 
 open class ValidationBuilder() {
-    val errors = mutableListOf<String>()
+    internal val errors = mutableListOf<String>()
 
-    inline fun error(block: () -> String) = errors.add(block())
+    internal inline fun error(block: () -> String) = errors.add(block())
 
     private fun <T : Any> KProperty<T?>.validate(
         message: String,

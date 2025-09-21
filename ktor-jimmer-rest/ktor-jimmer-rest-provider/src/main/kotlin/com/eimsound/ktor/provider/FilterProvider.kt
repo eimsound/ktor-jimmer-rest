@@ -19,39 +19,45 @@ import kotlin.reflect.KClass
 @DslMarker
 annotation class FilterDslMarker
 
-sealed class Filters<T : Any> {
-    data class Filter<T : Any>(val filter: (query: KMutableQuery<T>, call: RoutingCall) -> Unit) : Filters<T>()
-    data class Specification<T : Any>(val specification: (query: KMutableQuery<T>, call: RoutingCall) -> KSpecification<T>) :
+sealed class Filters<T> {
+    data class Filter<T : Any>(val filter: (query: KMutableRootQuery.ForEntity<T>, call: RoutingCall) -> Unit) :
+        Filters<T>()
+
+    data class Specification<T : Any>(val specification: (query: KMutableRootQuery.ForEntity<T>, call: RoutingCall) -> KSpecification<T>) :
         Filters<T>()
 }
 
-operator inline fun <T : Any> Filters<T>?.invoke(query: KMutableRootQuery<T>, call: RoutingCall) = this?.run {
+operator inline fun <T : Any> Filters<T>?.invoke(query: KMutableRootQuery.ForEntity<T>, call: RoutingCall) = this?.run {
     when (this) {
         is Filter -> filter(query, call)
         is Specification -> query.where(specification(query, call))
     }
 }
 
-@FilterDslMarker
 interface FilterProvider<T : Any> {
     var filter: Filters<T>?
 }
 
 @FilterDslMarker
-class FilterScope<T : Any>(query: KMutableQuery<T>, val call: RoutingCall) :
-    KMutableQuery<T> by query {
+class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
+    KMutableQuery<KNonNullTable<T>> by query {
 
-    @FilterDslMarker
     operator inline fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
         call.queryParameter<TParam>(key, ext)
 
 }
 
+/**
+ * SpecificationScope
+ * [org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery] 权限太大
+ * 包括[org.babyfish.jimmer.sql.kt.ast.query.KRootSelectable] 里的api
+ * 为了防止使用到，遂代理此类 [org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery]
+ */
 @FilterDslMarker
-class SpecificationScope<T : Any>(private val query: KMutableQuery<T>, val call: RoutingCall) : KSpecificationQuery<T> {
+class SpecificationScope<T : Any>(private val query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
+    KSpecificationQuery<T> {
     override val table: KNonNullTable<T> = query.table
 
-    @FilterDslMarker
     operator inline fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
         call.queryParameter<TParam>(key, ext)
 

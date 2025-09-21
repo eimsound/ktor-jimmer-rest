@@ -25,14 +25,13 @@ operator inline fun <T : Any> Fetchers<T>?.invoke(table: KNonNullTable<T>) = thi
     }
 }
 
-@FetcherDslMarker
 interface FetcherProvider<T : Any> {
     var fetcher: Fetchers<T>?
 }
 
 
 @FetcherDslMarker
-class FetcherScope<T : Any>(val creator: FetcherCreator<T>)
+class FetcherScope<T : Any>(val fetch: FetcherCreator<T>)
 
 inline fun <reified T : Any> FetcherProvider<T>.fetcher(block: FetcherScope<T>.() -> Fetcher<T>) {
     fetcher = Fetchers.Fetch(block(FetcherScope(newFetcher(T::class))))

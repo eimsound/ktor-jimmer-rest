@@ -3,6 +3,13 @@ plugins {
     `maven-publish`
     `java-library`
 }
+dependencies {
+    api(project(":ktor-jimmer-rest-route"))
+    api(project(":ktor-jimmer-rest-provider"))
+    api(project(":ktor-jimmer-rest-util"))
+    api(project(":ktor-jimmer-rest-validator"))
+    api(project(":ktor-jimmer-rest-config"))
+}
 
 subprojects {
     apply(plugin = "kotlin")

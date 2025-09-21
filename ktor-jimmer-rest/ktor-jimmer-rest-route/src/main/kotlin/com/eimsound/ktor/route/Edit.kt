@@ -23,14 +23,14 @@ inline fun <reified TEntity : Any> Route.edit(
             val body = call.receive<TEntity>()
             validator.validate(body)
             val entity = transformer.transform(body)
-            sqlClient.entities.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
+            sqlClient.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
         }
 
-        is Inputs.InputEntity -> {
+        is Inputs.InputType -> {
             val body = call.receive(input.inputType)
-            validator.validate(input.inputType,body)
-            val entity = transformer.transform(input.inputType,body)
-            sqlClient.entities.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
+            validator.validate(body)
+            val entity = transformer.transform(body)
+            sqlClient.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
         }
     }
     call.respond(result.modifiedEntity)
