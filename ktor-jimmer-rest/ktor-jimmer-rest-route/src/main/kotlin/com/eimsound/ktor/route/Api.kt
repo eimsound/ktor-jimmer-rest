@@ -42,10 +42,6 @@ inline fun <reified TEntity : Any> Route.api(
     }
 }
 
-@DslMarker
-annotation class ApiDslMarker
-
-@ApiDslMarker
 class ApiScope<T : Any>(override val call: RoutingCall) : QueryProvider<T>, ListProvider<T>,
     EditProvider<T>, CreateProvider<T>, RemoveProvider<T> {
     override var key: Any? = null

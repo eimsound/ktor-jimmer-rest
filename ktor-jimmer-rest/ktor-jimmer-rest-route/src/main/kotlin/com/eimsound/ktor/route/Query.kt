@@ -16,15 +16,12 @@ import io.ktor.utils.io.*
 
 @KtorDsl
 inline fun <reified TEntity : Any> Route.id(
-    path: String = Configuration.router.defaultPathVariable,
+    pathVariable: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend QueryProvider<TEntity>.() -> Unit,
-) = get(path) {
-
+) = get(pathVariable) {
     val provider = QueryScope<TEntity>(call).apply { block() }
-    val fetcher = provider.fetcher
-
     val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
-
+    val fetcher = provider.fetcher
     val result = if (fetcher != null) {
         when (fetcher) {
             is Fetchers.Fetch<TEntity> ->

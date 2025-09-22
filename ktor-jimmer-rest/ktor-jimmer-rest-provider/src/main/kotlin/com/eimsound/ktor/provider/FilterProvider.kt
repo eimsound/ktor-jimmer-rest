@@ -3,9 +3,8 @@ package com.eimsound.ktor.provider
 import com.eimsound.ktor.provider.Filters.Filter
 import com.eimsound.ktor.provider.Filters.Specification
 import com.eimsound.util.jimmer.KSpecificationQuery
-import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.specification
-import io.ktor.server.routing.*
+import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.sql.ast.query.Order
 import org.babyfish.jimmer.sql.kt.ast.expression.KExpression
 import org.babyfish.jimmer.sql.kt.ast.expression.KNonNullExpression
@@ -41,12 +40,7 @@ interface FilterProvider<T : Any> {
 
 @FilterDslMarker
 class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
-    KMutableQuery<KNonNullTable<T>> by query {
-
-    inline operator fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
-        call.queryParameter<TParam>(key, ext)
-
-}
+    KMutableQuery<KNonNullTable<T>> by query
 
 /**
  * SpecificationScope
@@ -58,10 +52,6 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, val call: Rou
 class SpecificationScope<T : Any>(private val query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
     KSpecificationQuery<T> {
     override val table: KNonNullTable<T> = query.table
-
-    inline operator fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
-        call.queryParameter<TParam>(key, ext)
-
     override fun orderBy(vararg orders: Order?) = query.orderBy(*orders)
 
     override fun orderBy(vararg expressions: KExpression<T>?) = query.orderBy(*expressions)
@@ -73,26 +63,25 @@ class SpecificationScope<T : Any>(private val query: KMutableQuery<KNonNullTable
     override fun having(vararg predicates: KNonNullExpression<Boolean>?) = query.having(*predicates)
 }
 
-inline fun <T : Any> FilterProvider<T>.filter(crossinline block:  FilterScope<T>.() -> Unit) {
-    filter = Filters.Filter { it, call ->
+inline fun <T : Any> FilterProvider<T>.filter(crossinline block: FilterScope<T>.() -> Unit) {
+    filter = Filter { it, call ->
         block(FilterScope(it, call))
     }
 }
 
 inline fun <T : Any> FilterProvider<T>.filter(
-    specificationType: KClass<out KSpecification<T>>,
-    crossinline block: SpecificationScope<T>.() -> Unit
+    specificationType: KClass<out KSpecification<T>>, crossinline block: SpecificationScope<T>.() -> Unit
 ) {
-    filter = Filters.Specification { it, call ->
+    filter = Specification { it, call ->
         block(SpecificationScope(it, call))
-        specification(specificationType, call)
+        call.specification(specificationType)
     }
 }
 
 fun <T : Any> FilterProvider<T>.filter(
     specificationType: KClass<out KSpecification<T>>,
 ) {
-    filter = Filters.Specification { it, call ->
-        specification(specificationType, call)
+    filter = Specification { it, call ->
+        call.specification(specificationType)
     }
 }

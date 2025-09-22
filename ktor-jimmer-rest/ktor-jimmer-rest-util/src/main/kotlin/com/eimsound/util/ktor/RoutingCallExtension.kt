@@ -9,6 +9,7 @@ import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.tableName
 import com.fasterxml.jackson.annotation.JsonProperty
+import io.ktor.server.request.header
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
@@ -181,15 +182,28 @@ val RoutingCall.defaultPathVariable
     get() = pathParameters[pathParameters.names().first()]
         ?: throw IllegalStateException("path variable not found")
 
+
+inline fun <reified TParam : Any> RoutingCall.query(key: String, ext: String? = null) =
+    queryParameter<TParam>(key, ext)
+
+inline operator fun <reified TParam : Any> RoutingCall.get(key: String, ext: String? = null) =
+    query<TParam>(key, ext)
+
+inline fun <reified TParam : Any> RoutingCall.path(key: String) =
+    pathParameters[key]?.parse(TParam::class)
+
+inline fun <reified TParam : Any> RoutingCall.header(key: String) =
+    request.header(key)?.parse(TParam::class)
+
+
 /**
  * function for RoutingCall to find query parameters with a specific separator.
  * @param specificationType KClass<out KSpecification<T>>
  * @param call RoutingCall
  * @return KSpecification<T>
  */
-inline fun <T : Any> specification(
+inline fun <T : Any> RoutingCall.specification(
     specificationType: KClass<out KSpecification<T>>,
-    call: RoutingCall
 ): KSpecification<T> {
     val constructor = specificationType.primaryConstructor
         ?: throw IllegalArgumentException("No primary constructor found for ${specificationType.qualifiedName}")
@@ -199,7 +213,7 @@ inline fun <T : Any> specification(
         ?: throw IllegalArgumentException("No property name found for ${specificationType.qualifiedName}: ${it.name}")
 
         val queryParameter =
-            call.queryParameters[propertyName]?.parse(
+            queryParameters[propertyName]?.parse(
                 it.type.classifier as KClass<*>
             )
         it to queryParameter
