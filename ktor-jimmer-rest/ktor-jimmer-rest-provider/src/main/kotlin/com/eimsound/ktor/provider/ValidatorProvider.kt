@@ -8,25 +8,29 @@ import com.eimsound.ktor.validator.validate
 import io.ktor.http.HttpStatusCode
 import org.babyfish.jimmer.Input
 
+//@DslMarker
+//annotation class ValidatorDslMarker
+
 sealed class Validators<T> {
-    data class Entity<T : Any>(val validate: ValidationBuilder.(T) -> Unit) : Validators<T>()
+    data class Entity<T : Any>(val validate: ValidatorScope.(T) -> Unit) : Validators<T>()
     data class InputType<T : Any, out TInput : Input<T>>(
-        val validate: ValidationBuilder.(@UnsafeVariance TInput) -> Unit
+        val validate: ValidatorScope.(@UnsafeVariance TInput) -> Unit
     ) : Validators<T>()
 }
 
-inline fun <T : Any> Validators<T>?.validate(body: T) = this?.run {
-    if (this is Entity<T>) validate(body, validate).`throw`()
+fun <T : Any> Validators<T>?.validate(body: T) = this?.run {
+    if (this is Entity<T>)
+        ValidatorScope().validate(body, validate).`throw`()
 }
 
 inline fun <reified T : Any, reified TInput : Input<T>> Validators<T>?.validate(
     body: TInput
 ) = this?.run {
     if (this is InputType<T, *>)
-        validate(body, validate).`throw`()
+        ValidatorScope().validate(body, validate).`throw`()
 }
 
-inline fun ValidationResult.`throw`() = let {
+fun ValidationResult.`throw`() = let {
     if (it is ValidationResult.Invalid) {
         it.`throw`(HttpStatusCode.BadRequest)
     }
@@ -36,12 +40,14 @@ interface ValidatorProvider<T> {
     var validator: Validators<T>?
 }
 
-//fun <T : Any> ValidatorProvider<T>.validator(block: ValidationBuilder.(T) -> Unit) {
-//    validator = Validators.Entity(block)
-//}
-//
-//@JvmName("validatorInput")
-//fun <TInput : Input<*>> ValidatorProvider<*>.validator(block: ValidationBuilder.(TInput) -> Unit) {
-//    validator = Validators.InputEntity(block)
-//}
-//
+@InputDslMarker
+class ValidatorScope : ValidationBuilder()
+
+fun <T : Any> EntityScope<T>.validator(block: ValidatorScope.(T) -> Unit) {
+    validator = Entity(block)
+}
+
+fun <T : Any, TInput : Input<T>> InputScope<T, TInput>.validator(block: ValidatorScope.(TInput) -> Unit) {
+    validator = InputType(block)
+}
+

@@ -112,12 +112,11 @@ open class ValidationBuilder() {
 }
 
 
-fun <T : Any> validate(body: T, block: ValidationBuilder.(T) -> Unit): ValidationResult {
-    val validationBuilder = ValidationBuilder()
+fun <T : Any, V : ValidationBuilder> V.validate(body: T, block: V.(T) -> Unit): ValidationResult {
     val result = runCatching {
-        validationBuilder.apply { block(body) }
+        this.apply { block(body) }
     }.getOrElse { e ->
-        ValidationExceptionCatcher.of(e).handle(validationBuilder, e, "Validation failed: ${e.message}")
+        ValidationExceptionCatcher.of(e).handle(this, e, "Validation failed: ${e.message}")
     }
     val errors = result.errors
     return if (errors.isEmpty()) ValidationResult.Valid else ValidationResult.Invalid(errors)

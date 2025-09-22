@@ -27,13 +27,14 @@ sealed class Filters<T> {
         Filters<T>()
 }
 
-operator inline fun <T : Any> Filters<T>?.invoke(query: KMutableRootQuery.ForEntity<T>, call: RoutingCall) = this?.run {
+operator fun <T : Any> Filters<T>?.invoke(query: KMutableRootQuery.ForEntity<T>, call: RoutingCall) = this?.run {
     when (this) {
         is Filter -> filter(query, call)
         is Specification -> query.where(specification(query, call))
     }
 }
 
+@FilterDslMarker
 interface FilterProvider<T : Any> {
     var filter: Filters<T>?
 }
@@ -42,7 +43,7 @@ interface FilterProvider<T : Any> {
 class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
     KMutableQuery<KNonNullTable<T>> by query {
 
-    operator inline fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
+    inline operator fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
         call.queryParameter<TParam>(key, ext)
 
 }
@@ -58,7 +59,7 @@ class SpecificationScope<T : Any>(private val query: KMutableQuery<KNonNullTable
     KSpecificationQuery<T> {
     override val table: KNonNullTable<T> = query.table
 
-    operator inline fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
+    inline operator fun <reified TParam : Any> get(key: String, ext: String? = null): TParam? =
         call.queryParameter<TParam>(key, ext)
 
     override fun orderBy(vararg orders: Order?) = query.orderBy(*orders)
@@ -72,8 +73,7 @@ class SpecificationScope<T : Any>(private val query: KMutableQuery<KNonNullTable
     override fun having(vararg predicates: KNonNullExpression<Boolean>?) = query.having(*predicates)
 }
 
-
-inline fun <T : Any> FilterProvider<T>.filter(crossinline block: FilterScope<T>.() -> Unit) {
+inline fun <T : Any> FilterProvider<T>.filter(crossinline block:  FilterScope<T>.() -> Unit) {
     filter = Filters.Filter { it, call ->
         block(FilterScope(it, call))
     }
@@ -89,7 +89,7 @@ inline fun <T : Any> FilterProvider<T>.filter(
     }
 }
 
-inline fun <T : Any> FilterProvider<T>.filter(
+fun <T : Any> FilterProvider<T>.filter(
     specificationType: KClass<out KSpecification<T>>,
 ) {
     filter = Filters.Specification { it, call ->
