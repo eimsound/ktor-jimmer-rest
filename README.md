@@ -54,7 +54,7 @@ api<Book> {
             `ilike?`(table::name),
             `ilike?`(table.store::name),
             `between?`(table::price),
-            table.edition.`between?`(get("price", "le"), this["price", "ge"])
+            table.edition.`between?`(call["price", "ge"], call["price", "le"])
         )
         orderBy(table.id.desc())
     }
