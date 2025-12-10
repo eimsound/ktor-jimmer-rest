@@ -33,7 +33,7 @@ open class ValidationBuilder() {
 
     fun <T : Any> KProperty<T?>.notNull(message: () -> String): KProperty<T?> =
         this@notNull.validate(message()) {
-            this != null
+            true
         }
 
     fun KProperty<String?>.notBlank(message: () -> String): KProperty<String?> =

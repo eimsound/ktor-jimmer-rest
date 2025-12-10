@@ -202,13 +202,13 @@ inline fun <reified TParam : Any> RoutingCall.header(key: String) =
  * @param call RoutingCall
  * @return KSpecification<T>
  */
-inline fun <T : Any> RoutingCall.specification(
+fun <T : Any> RoutingCall.specification(
     specificationType: KClass<out KSpecification<T>>,
 ): KSpecification<T> {
     val constructor = specificationType.primaryConstructor
         ?: throw IllegalArgumentException("No primary constructor found for ${specificationType.qualifiedName}")
 
-    val parameters = constructor.parameters.map {
+    val parameters = constructor.parameters.associateWith {
         val propertyName = it.findAnnotation<JsonProperty>()?.value ?: it.name
         ?: throw IllegalArgumentException("No property name found for ${specificationType.qualifiedName}: ${it.name}")
 
@@ -216,8 +216,8 @@ inline fun <T : Any> RoutingCall.specification(
             queryParameters[propertyName]?.parse(
                 it.type.classifier as KClass<*>
             )
-        it to queryParameter
-    }.toMap()
+        queryParameter
+    }
     val instance = constructor.callBy(parameters)
     return instance
 }

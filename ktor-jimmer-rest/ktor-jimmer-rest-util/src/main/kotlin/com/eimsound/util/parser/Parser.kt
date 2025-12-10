@@ -5,7 +5,8 @@ import io.ktor.http.parsing.ParseException
 import java.math.BigDecimal
 import kotlin.reflect.KClass
 
-inline fun <T : Any> String.parse(type: KClass<T>): T = runCatching {
+@Suppress("UNCHECKED_CAST")
+fun <T : Any> String.parse(type: KClass<T>): T = runCatching {
     when (type) {
         String::class -> this
         Int::class -> this.toInt()

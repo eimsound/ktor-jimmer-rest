@@ -8,7 +8,7 @@ import org.babyfish.jimmer.sql.Id
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-inline fun <T> getPropertyFullName(property: KProperty<T>, bound: KClass<*>): String {
+fun <T> getPropertyFullName(property: KProperty<T>, bound: KClass<*>): String {
     val propertyOwner = getPropertyOwner(property)
     if (propertyOwner == bound) {
         return property.name
@@ -19,12 +19,12 @@ inline fun <T> getPropertyFullName(property: KProperty<T>, bound: KClass<*>): St
 
 inline fun <reified T : Any> entityIdType(): KClass<*> = getPropertyTypeByAnnotation<T>(Id::class)
 
-inline fun tableName(receiver: Any): String {
+fun tableName(receiver: Any): String {
     val javaTableName = getPropertyByPropertyName(receiver::class, "javaTable")?.getter?.call(receiver).toString()
     return javaTableName
 }
 
-inline fun tableType(receiver: Any): String {
+fun tableType(receiver: Any): String {
     val typeName = getMemberByMemberName(receiver::class, "getImmutableType")?.call(receiver).toString()
     return typeName
 }

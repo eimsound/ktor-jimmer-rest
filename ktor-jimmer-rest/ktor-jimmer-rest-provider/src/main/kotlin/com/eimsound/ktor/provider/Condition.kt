@@ -10,7 +10,7 @@ import kotlin.reflect.KProperty
 inline fun <reified T : Any, reified P : Any> FilterScope<T>.`eq?`(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     val parameter = call.queryParameterExt<P>(param).default()
-    return param?.call()?.`eq?`(parameter?.value)
+    return param.call().`eq?`(parameter?.value)
 }
 
 
@@ -25,18 +25,18 @@ inline fun <reified T : Any> FilterScope<T>.`ilike?`(
         "end" -> LikeMode.END
         else -> LikeMode.ANYWHERE
     }
-    return param?.call()?.`ilike?`(parameter?.value, likeMode)
+    return param.call().`ilike?`(parameter?.value, likeMode)
 }
 
 inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`between?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val parameter = call.queryParameterExt<P>(param)
-    return param?.call()?.`between?`(parameter["ge"]?.value, parameter["le"]?.value)
+    return param.call().`between?`(parameter["ge"]?.value, parameter["le"]?.value)
 }
 
 
 inline fun <reified T : Any, reified P : Any> FilterScope<T>.noNull(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
-    return param?.call()?.isNotNull()
+    return param.call().isNotNull()
 }
