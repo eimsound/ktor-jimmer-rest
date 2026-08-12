@@ -12,9 +12,7 @@ import com.eimsound.ktor.provider.Fetchers
 import com.eimsound.util.ktor.defaultPathVariable
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
-import io.ktor.utils.io.*
 
-@KtorDsl
 inline fun <reified TEntity : Any> Route.id(
     pathVariable: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend QueryProvider<TEntity>.() -> Unit,

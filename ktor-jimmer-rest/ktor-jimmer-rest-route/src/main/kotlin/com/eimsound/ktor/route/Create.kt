@@ -5,11 +5,9 @@ import com.eimsound.ktor.provider.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 
-@KtorDsl
 inline fun <reified TEntity : Any> Route.create(
     path: String = "",
     crossinline block: suspend CreateProvider<TEntity>.() -> Unit,

@@ -7,9 +7,7 @@ import com.eimsound.jimmer.sqlClient
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.Pager
 import com.eimsound.util.jimmer.fetchPageOrElse
-import io.ktor.utils.io.*
 
-@KtorDsl
 inline fun <reified TEntity : Any> Route.list(
     crossinline block: suspend ListProvider<TEntity>.() -> Unit,
 ) = get {

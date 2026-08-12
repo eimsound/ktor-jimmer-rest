@@ -2,7 +2,6 @@ package com.eimsound.ktor.route
 
 import io.ktor.http.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
 import com.eimsound.ktor.provider.CallProvider
 import com.eimsound.ktor.provider.KeyProvider
 import com.eimsound.ktor.config.Configuration
@@ -11,7 +10,6 @@ import com.eimsound.util.ktor.defaultPathVariable
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
 
-@KtorDsl
 inline fun <reified TEntity : Any> Route.remove(
     path: String = Configuration.router.defaultPathVariable,
     crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,

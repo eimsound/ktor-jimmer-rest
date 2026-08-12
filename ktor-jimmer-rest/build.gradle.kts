@@ -17,6 +17,7 @@ subprojects {
         implementation(rootProject.libs.kotlinx.coroutines.core)
         implementation(rootProject.libs.kotlin.reflect)
         compileOnly(rootProject.libs.ktor.server.core)
+        compileOnly(rootProject.libs.ktor.serialization.jackson3)
         compileOnly(rootProject.libs.jimmer)
         testImplementation(rootProject.libs.bundles.test)
     }

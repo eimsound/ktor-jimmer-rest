@@ -4,9 +4,7 @@ import com.eimsound.ktor.config.Configuration
 import com.eimsound.ktor.provider.*
 import com.eimsound.util.ktor.Pager
 import io.ktor.server.routing.*
-import io.ktor.utils.io.*
 
-@KtorDsl
 @JvmName("api")
 inline fun <reified TEntity : Any> Route.api(
     path: String,
@@ -41,7 +39,6 @@ inline fun <reified TEntity : Any> Route.api(
         key = scope.key
     }
 }
-
 class ApiScope<T : Any>(override val call: RoutingCall) : QueryProvider<T>, ListProvider<T>,
     EditProvider<T>, CreateProvider<T>, RemoveProvider<T> {
     override var key: Any? = null
