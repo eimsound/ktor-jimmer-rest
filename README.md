@@ -3,7 +3,8 @@
 A Ktor plugin that provides a concise DSL-style API for building RESTful web services
 based on [Ktor](https://github.com/ktorio/ktor) and [Jimmer](https://github.com/babyfish-ct/jimmer?tab=readme-ov-file)
 
-go to the [ktor-jimmer-rest-sample](https://github.com/SparrowAndSnow/ktor-jimmer-rest-sample)
+With one `api<T> {}` block you get the full set of CRUD endpoints for a Jimmer entity:
+`GET /{id}`, `GET` (filterable, pageable list), `POST`, `PUT`, and `DELETE /{id}`.
 
 <a href="./LICENSE">
     <img src="https://img.shields.io/github/license/eimsound/ktor-jimmer-rest.svg" alt="license">
@@ -11,6 +12,16 @@ go to the [ktor-jimmer-rest-sample](https://github.com/SparrowAndSnow/ktor-jimme
 <a href="https://github.com/babyfish-ct/jimmer">
     <img src="https://img.shields.io/badge/dependency-jimmer-darkgreen" alt="jimmer">
 </a>
+
+## Features
+
+- **Zero-boilerplate CRUD** — declare `api<Book>("/book") {}` and the five REST routes are registered for you
+- **Declarative filtering** — reuse Jimmer's Kotlin query DSL, or plug in a Jimmer `KSpecification` DTO
+- **Nullable query extensions** — `eq?`, `ilike?`, `between?`, `noNull` map request parameters to predicates safely
+- **Flexible projection** — choose a Jimmer `Fetcher` DSL or a generated `View` DTO
+- **Input & validation** — use the entity or a Jimmer `Input` DTO, with a built-in validation DSL and transformers
+- **Customizable parsing & paging** — register parsers for your own types, configure default page size and custom page objects
+- **Plug & play** — everything is configured through the `JimmerRest` Ktor plugin
 
 ## Start
 Add it in your settings.gradle(.kts)
@@ -39,10 +50,43 @@ install(JimmerRest) {
 }
 ```
 
+### Configuration
+
+The plugin exposes three configuration blocks:
+
+```kotlin
+install(JimmerRest) {
+    jimmerSqlClientFactory {
+        inject<KSqlClient>()
+    }
+
+    parser {
+        register<IntRange> {
+            val split = split("-")
+            IntRange(split[0].toInt(), split[1].toInt())
+        }
+    }
+
+    pager {
+        defaultPageIndex = 0
+        defaultPageSize = 10
+        pageIndexParameterName = "pageIndex"
+        pageSizeParameterName = "pageSize"
+        // pageFactory = { rows, totalCount, source -> MyPage(rows, totalCount, ...) }
+    }
+
+    router {
+        extParameterSeparator = "__"   // e.g. price__ge
+        subParameterSeparator = "_"    // e.g. store_name
+        defaultPathVariable = "{id}"
+    }
+}
+```
+
 ## Usage
 
-Provides routes (``create | remove | edit | id | list | api``). For detailed usage, refer to
-the [documentation](https://github.com/eimsound/ktor-jimmer-rest). 
+`api<T>` registers `create | remove | edit | id | list` routes for the entity. For detailed usage, refer to
+the [documentation](https://ktor-jimmer-rest.eimsound.github.com).
 
 ```kotlin
 api<Book> {
@@ -102,8 +146,57 @@ api<Book> {
   parameter,
   and for ``__ge | __le``, it is a special extension of `` `between?` ``, `` `ilike?` `` can be used with the suffixes
   `` __anywhere | __exact | __start | __end ``, which correspond to different filtering functions, see
-  the [documentation](https://github.com/eimsound/ktor-jimmer-rest) for details
+  the [documentation](https://ktor-jimmer-rest.eimsound.github.com) for details
 * The fetcher then continues to use the functionality of jimmer, jimmer is indeed a very powerful orm framework, and writing
   it is very elegant, please refer to [jimmer's documentation](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/welcome)
   for details
 * The input includes validator and transformer, which can be used to validate and transform objects
+
+### Generated routes
+
+For `api<Book>("/book")`, the following endpoints are available:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/book/{id}` | Fetch one entity by id (404 when missing) |
+| `GET` | `/book` | Filterable, pageable list |
+| `POST` | `/book` | Create (`INSERT_ONLY`) |
+| `PUT` | `/book` | Update (`UPDATE_ONLY`, entity from the request body carries the id) |
+| `DELETE` | `/book/{id}` | Delete by id |
+
+### Query parameters
+
+Filter predicates are bound to request parameters automatically:
+
+| Extension | Query parameter | Example |
+|-----------|-----------------|---------|
+| `eq?` | `{name}` | `?name=GraphQL` |
+| `ilike?` | `{name}` + optional `__anywhere \| __exact \| __start \| __end` | `?name__start=GraphQL` |
+| `between?` | `{name}__ge`, `{name}__le` | `?price__ge=50&price__le=80` |
+| nested table | sub-fields joined by `_` | `?store_name=O'REILLY` |
+
+List endpoints accept `pageIndex` and `pageSize` (defaults: `0` and `10`, configurable via `pager`).
+
+## Modules
+
+| Module | Responsibility |
+|--------|----------------|
+| `ktor-jimmer-rest-config` | `JimmerRest` Ktor plugin, router / parser / pager configuration |
+| `ktor-jimmer-rest-route` | Route registration (`api`, `id`, `list`, `create`, `edit`, `remove`) |
+| `ktor-jimmer-rest-provider` | DSL scopes and providers (filter, fetcher, input, validator, transformer) |
+| `ktor-jimmer-rest-validator` | Validation DSL and exception handling |
+| `ktor-jimmer-rest-util` | Parameter parsing, paging helpers, Jimmer extensions |
+
+## Sample
+
+See [ktor-jimmer-rest-sample](https://github.com/SparrowAndSnow/ktor-jimmer-rest-sample) for a runnable
+book-service / order-service example (PostgreSQL via docker-compose).
+
+## Documentation
+
+- [简体中文文档](https://ktor-jimmer-rest.eimsound.github.com/)
+- [English Docs](https://ktor-jimmer-rest.eimsound.github.com/en/)
+
+## License
+
+[Apache License 2.0](./LICENSE)
