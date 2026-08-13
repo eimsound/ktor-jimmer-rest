@@ -6,7 +6,7 @@ import com.eimsound.ktor.provider.CallProvider
 import com.eimsound.ktor.provider.KeyProvider
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.jimmer.sqlClient
-import com.eimsound.util.ktor.defaultPathVariable
+import com.eimsound.util.ktor.pathParameter
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
 
@@ -15,7 +15,8 @@ inline fun <reified TEntity : Any> Route.remove(
     crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,
 ) = delete(path) {
     val provider = RemoveScope<TEntity>(call).apply { block() }
-    val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
+    val key = provider.key ?: call.pathParameter(path.removeSurrounding("{", "}"))
+        .parse(entityIdType<TEntity>())
 
     sqlClient.deleteById(TEntity::class, key)
     call.response.status(HttpStatusCode.OK)
@@ -26,5 +27,3 @@ interface RemoveProvider<T : Any> : CallProvider, KeyProvider<T>
 class RemoveScope<T : Any>(override val call: RoutingCall) : RemoveProvider<T> {
     override var key: Any? = null
 }
-
-

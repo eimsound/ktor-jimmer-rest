@@ -9,7 +9,7 @@ import io.ktor.server.routing.*
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.jimmer.sqlClient
 import com.eimsound.ktor.provider.Fetchers
-import com.eimsound.util.ktor.defaultPathVariable
+import com.eimsound.util.ktor.pathParameter
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
 
@@ -18,7 +18,8 @@ inline fun <reified TEntity : Any> Route.id(
     crossinline block: suspend QueryProvider<TEntity>.() -> Unit,
 ) = get(pathVariable) {
     val provider = QueryScope<TEntity>(call).apply { block() }
-    val key = provider.key ?: call.defaultPathVariable.parse(entityIdType<TEntity>())
+    val key = provider.key ?: call.pathParameter(pathVariable.removeSurrounding("{", "}"))
+        .parse(entityIdType<TEntity>())
     val fetcher = provider.fetcher
     val result = if (fetcher != null) {
         when (fetcher) {
@@ -44,4 +45,3 @@ class QueryScope<T : Any>(override val call: RoutingCall) : QueryProvider<T> {
     override var fetcher: Fetchers<T>? = null
     override var key: Any? = null
 }
-

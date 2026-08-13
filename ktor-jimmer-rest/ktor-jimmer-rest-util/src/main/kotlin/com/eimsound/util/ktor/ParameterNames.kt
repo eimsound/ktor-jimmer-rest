@@ -1,0 +1,94 @@
+package com.eimsound.util.ktor
+
+import com.eimsound.ktor.config.Configuration
+import com.eimsound.util.reflect.getPropertyByPropertyName
+import kotlin.jvm.internal.PropertyReference0Impl
+import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
+import org.babyfish.jimmer.sql.ast.impl.table.TableTypeProvider
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * 解析"属性引用 → 查询参数名"的映射。
+ *
+ * 例如：
+ * - 根表属性 `table::name` → `name`
+ * - 嵌套关联 `table.store::name` → `store_name`（`subParameterSeparator` 默认 `_`）
+ */
+object ParameterNames {
+
+    private val tableAliasGetters = ConcurrentHashMap<KClass<*>, KCallable<*>>()
+
+    /**
+     * 返回属性引用对应的查询参数名。
+     *
+     * @param property 必须是绑定的属性引用（如 `table::name`、`table.store::name`）
+     * @throws IllegalArgumentException 属性引用未绑定（无法定位表对象）
+     * @throws IllegalStateException 无法从表对象解析 Jimmer 表别名（版本兼容问题）
+     */
+    fun resolve(property: KProperty<*>): String = resolveWithPath(property).value
+
+    fun resolveWithPath(property: KProperty<*>): ResolvedName {
+        val receiver = boundReceiverOf(property)
+        val alias = tableAliasOf(receiver)
+        val segments = alias.split(".").drop(1)
+        val value = (segments + property.name)
+            .joinToString(Configuration.router.subParameterSeparator)
+        return ResolvedName(value, segments, property.name)
+    }
+
+    /**
+     * D3：嵌套关联的参数名与根实体的标量属性同名时，说明查询参数存在歧义，fail-fast。
+     *
+     * 例如根实体存在 `store_name` 属性时，`table.store::name` 生成的参数名 `store_name`
+     * 无法区分是根字段还是嵌套关联，直接抛出可操作的错误。
+     *
+     * @param rootTable 查询的根表对象（FilterScope 的 `table`）
+     * @param resolved ParameterNames.resolveWithPath 的结果
+     */
+    fun ensureNoRootCollision(rootTable: Any, resolved: ResolvedName) {
+        if (resolved.segments.isEmpty()) {
+            return
+        }
+        val javaTable = runCatching { javaTableOf(rootTable) }.getOrNull() ?: return
+        val rootType = (javaTable as? TableTypeProvider)?.immutableType ?: return
+        if (rootType.props.containsKey(resolved.value)) {
+            throw IllegalStateException(
+                "查询参数 '${resolved.value}' 与根实体 ${rootType} 的标量属性同名冲突 " +
+                    "（嵌套路径 ${resolved.segments.joinToString(".")}.${resolved.propertyName}）。" +
+                    "请调整 router.subParameterSeparator，或重命名冲突字段。"
+            )
+        }
+    }
+
+    private fun boundReceiverOf(property: KProperty<*>): Any {
+        return (property as? PropertyReference0Impl)?.boundReceiver
+            ?: throw IllegalArgumentException(
+                "filter 参数必须是绑定的属性引用（如 table::name），实际是：$property"
+            )
+    }
+
+    private fun tableAliasOf(receiver: Any): String {
+        return javaTableOf(receiver).toString()
+    }
+
+    private fun javaTableOf(receiver: Any): Any {
+        val getter = tableAliasGetters.computeIfAbsent(receiver::class) { type ->
+            getPropertyByPropertyName(type, "javaTable")?.getter
+                ?: throw IllegalStateException(
+                    "无法从表对象 ${type.simpleName} 解析 Jimmer 表别名（缺少 javaTable 属性），" +
+                        "可能与当前 Jimmer 版本不兼容，请检查依赖版本。"
+                )
+        }
+        return checkNotNull(getter.call(receiver)) {
+            "表对象 ${receiver::class.simpleName} 的 javaTable 属性值为空"
+        }
+    }
+}
+
+data class ResolvedName(
+    val value: String,
+    val segments: List<String>,
+    val propertyName: String,
+)

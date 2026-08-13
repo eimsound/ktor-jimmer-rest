@@ -1,13 +1,11 @@
 package com.eimsound.util.ktor
 
-import com.eimsound.util.reflect.getPropertyReceiver
 import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.sql.kt.ast.expression.KExpression
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.parser.parse
-import com.eimsound.util.jimmer.tableName
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.ktor.server.request.header
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
@@ -70,11 +68,7 @@ inline fun <T> ExtParameterMap<T>.defaultValue() = values.firstOrNull()?.value
 inline fun <reified T : Any> RoutingCall.queryParameterExt(
     property: KProperty<KExpression<T>>
 ): ExtParameterMap<T> {
-    val receiver = getPropertyReceiver(property)
-    val tableName = tableName(receiver)
-//    val tableType = tableType(receiver)
-    val name = (tableName.split(".") + property.name).drop(1)
-        .joinToString(Configuration.router.subParameterSeparator)
+    val name = ParameterNames.resolve(property)
     return queryParameterExt<T>(T::class, name)
 }
 
@@ -173,6 +167,8 @@ inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? = quer
  * An extension property for RoutingCall to get the default path variable.
  *
  * This property retrieves the first path variable from the RoutingCall's path parameters.
+ * 注意：仅适用于路由只有一个路径参数的场景；嵌套路由（如外层 `/{tenant}`）应使用
+ * [pathParameter] 按名称取值。
  * Throws an IllegalStateException if no path variable is found.
  *
  * @return The default path variable as a String.
@@ -181,6 +177,16 @@ inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? = quer
 val RoutingCall.defaultPathVariable
     get() = pathParameters[pathParameters.names().first()]
         ?: throw IllegalStateException("path variable not found")
+
+/**
+ * 按名称获取路径参数（推荐用于多路径参数/嵌套路由场景）。
+ *
+ * @param name 路径参数名（不含花括号，如 `id`）
+ * @return 路径参数值
+ * @throws IllegalStateException 路径参数不存在
+ */
+fun RoutingCall.pathParameter(name: String): String =
+    pathParameters[name] ?: throw IllegalStateException("path variable '$name' not found")
 
 
 inline fun <reified TParam : Any> RoutingCall.query(key: String, ext: String? = null) =

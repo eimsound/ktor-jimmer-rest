@@ -16,6 +16,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -33,7 +34,7 @@ fun Application.jimmerRestTestModule(routes: Routing.() -> Unit) {
             call.respond(cause.httpStatusCode, cause.errors)
         }
         exception<ParseException> { call, cause ->
-            call.respondText(cause.message ?: "Bad Request", status = HttpStatusCode.BadRequest)
+            call.respondText(cause.message, status = HttpStatusCode.BadRequest)
         }
     }
     install(JimmerRest) {
@@ -55,8 +56,11 @@ fun ApplicationTestBuilder.jimmerRestTestApp(routes: Routing.() -> Unit): HttpCl
         application { jimmerRestTestModule(routes) }
     }
 
-fun Routing.bookRoutes(path: String = "/book", pagingEnabled: Boolean = true) {
+fun Route.bookRoutes(path: String = "/book", pagingEnabled: Boolean = true, key: Any? = null) {
     api<Book>(path) {
+        if (key != null) {
+            this.key = key
+        }
         filter {
             where(
                 `ilike?`(table::name),
@@ -90,13 +94,21 @@ fun Routing.bookRoutes(path: String = "/book", pagingEnabled: Boolean = true) {
     }
 }
 
-fun Routing.mappingRoutes(path: String = "/book") {
+fun Route.mappingRoutes(path: String = "/book") {
     api<Book>(path) {
         filter {
             where(
                 `ilike?`(table::name),
                 `ilike?`(table.store::name)
             )
+        }
+    }
+}
+
+fun Route.orderRoutes(path: String = "/order-item") {
+    api<OrderItem>(path) {
+        filter {
+            where(`ilike?`(table.store::name))
         }
     }
 }
