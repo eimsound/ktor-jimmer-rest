@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
     `maven-publish`
     `java-library`
 }
@@ -9,6 +10,34 @@ dependencies {
     api(project(":ktor-jimmer-rest-util"))
     api(project(":ktor-jimmer-rest-validator"))
     api(project(":ktor-jimmer-rest-config"))
+
+    testImplementation(libs.ktor.server.core)
+    testImplementation(libs.ktor.server.content.negotiation)
+    testImplementation(libs.ktor.server.status.pages)
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.serialization.jackson3)
+    testImplementation(libs.ktor.client.content.negotiation)
+    testImplementation(libs.jimmer)
+    testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.h2)
+    testImplementation(libs.kotlin.reflect)
+
+    kspTest(libs.jimmer.ksp)
+}
+
+ksp {
+    arg("jimmer.dto.mutable", "true")
+}
+
+kotlin {
+    sourceSets.test {
+        kotlin.srcDir("build/generated/ksp/test/kotlin")
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 subprojects {
