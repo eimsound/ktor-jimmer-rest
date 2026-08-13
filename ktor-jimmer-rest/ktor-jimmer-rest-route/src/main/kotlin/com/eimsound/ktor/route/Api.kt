@@ -89,5 +89,6 @@ inline fun <reified TEntity : Any> Route.api(
             key = config.key
             keyResolver = config.keyResolver
         }
+        config.customRoutes?.invoke(this)
     }
 }

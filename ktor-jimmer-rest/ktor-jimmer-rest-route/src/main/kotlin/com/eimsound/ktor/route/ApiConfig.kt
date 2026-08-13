@@ -3,6 +3,7 @@ package com.eimsound.ktor.route
 import com.eimsound.ktor.provider.*
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.ktor.Pager
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.Input
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
@@ -40,6 +41,11 @@ class ApiConfig<T : Any> :
      * 批量端点配置（由 `batch {}` 块修改）。
      */
     val batch = BatchConfig()
+
+    /**
+     * 自定义路由（由 `action {}` 块注册），在内置路由之后执行。
+     */
+    var customRoutes: (Route.() -> Unit)? = null
 }
 
 /**
@@ -115,6 +121,24 @@ fun <T : Any> ApiConfig<T>.patch(block: EditConfig<T>.() -> Unit = {}) {
 fun <T : Any> ApiConfig<T>.batch(block: BatchConfig.() -> Unit = {}) {
     batchEnabled = true
     this.batch.apply(block)
+}
+
+/**
+ * 注册自定义路由（Ktor `Route` DSL），挂载到 `{path}` 下，在内置路由之后生效。
+ *
+ * ```
+ * api<Book>("/book") {
+ *     action {
+ *         get("stats") { ... }
+ *         post("{id}/publish") { ... }
+ *     }
+ * }
+ * ```
+ *
+ * 注意：block 在注册期执行一次，handler 内捕获的外部状态为注册期快照（跨请求共享）。
+ */
+fun <T : Any> ApiConfig<T>.action(block: Route.() -> Unit) {
+    customRoutes = block
 }
 
 /**

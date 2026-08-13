@@ -3,6 +3,7 @@ package com.eimsound.rest.test.infra
 import com.eimsound.ktor.plugin.*
 import com.eimsound.ktor.provider.*
 import com.eimsound.ktor.route.*
+import com.eimsound.jimmer.sqlClient
 import com.eimsound.rest.test.entity.*
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ClientContentNegotiation
@@ -11,8 +12,11 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.Routing
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import com.eimsound.ktor.validator.jimmerRestErrors
@@ -255,6 +259,23 @@ fun Route.batchRoutes(
         batch {
             this.path = batchPath
             this.deleteIdsParameterName = deleteIdsParameterName
+        }
+    }
+}
+
+fun Route.customActionRoutes(path: String = "/book-custom") {
+    api<Book>(path) {
+        action {
+            get("stats") {
+                val count = sqlClient.createQuery(Book::class) {
+                    select(rowCount())
+                }.fetchUnlimitedCount()
+                call.respond(mapOf("count" to count))
+            }
+            post("{id}/publish") {
+                val id = call.pathParameters["id"]?.toLong()
+                call.respond(mapOf("id" to id, "published" to true))
+            }
         }
     }
 }
