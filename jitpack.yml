@@ -1,8 +1,7 @@
 jdk:
-  - openjdk25
-subdirectory: "ktor-jimmer-rest" # 指定子目录路径
+  - openjdk21
 install:
-  - cd ./ktor-jimmer-rest
-  - pwd
-  - chmod +x gradlew # 确保 gradlew 有执行权限（可选）
-  - ./gradlew publishToMavenLocal # 根据项目需求调整构建命令
+  # Gradle 工程位于 ktor-jimmer-rest/ktor-jimmer-rest/（两层嵌套）
+  - cd ktor-jimmer-rest/ktor-jimmer-rest
+  - chmod +x gradlew
+  - ./gradlew publishToMavenLocal --no-daemon
