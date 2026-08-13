@@ -6,11 +6,14 @@
 
 ## 特性
 
-- **一个 `api<T>` 搞定全部 CRUD**：自动注册 `GET /{id}`、`GET`（列表）、`POST`、`PUT`、`DELETE /{id}` 五条路由
-- **声明式过滤**：复用 Jimmer 查询 DSL，或直接使用 `KSpecification` DTO
-- **可空查询扩展**：`eq?` / `ilike?` / `between?` / `noNull` 把请求参数安全地映射为查询条件
+- **一个 `api<T>` 搞定全部 CRUD**：自动注册查询/创建/更新/删除 + count/exists，可选 PATCH 与批量端点
+- **声明式过滤与排序**：复用 Jimmer 查询 DSL，`eq?`/`in?`/`lt?`/`gt?`/`ilike?`/`between?` 等自动映射参数，`sort()` 动态排序
+- **写操作可配置**：`create {}`/`edit {}`/`patch {}` 独立配置保存模式与响应投影
 - **灵活的投影**：Fetcher DSL 或生成的 `View` DTO 二选一
 - **输入与校验**：实体或 Jimmer `Input` DTO，内置校验 DSL 与 transformer
+- **批量操作**：`batch {}` 启用批量创建/更新/删除
+- **自定义动作**：`action {}` 在 `api<T>` 内注册任意路由
+- **统一错误响应**：`ApiError` envelope + 一行 `jimmerRestErrors()`
 - **可定制解析与分页**：自定义类型解析器、默认分页参数、自定义分页对象
 - **即插即用**：所有配置都收敛在 `JimmerRest` Ktor 插件里
 

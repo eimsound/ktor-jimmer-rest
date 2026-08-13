@@ -73,7 +73,7 @@ interface Book : BaseEntity {
 
 ## 4. Declare the API
 
-A single `api<Book>("/book")` registers five REST routes:
+A single `api<Book>("/book")` registers the full set of REST routes (the block runs once at registration):
 
 ```kotlin
 routing {
@@ -82,8 +82,10 @@ routing {
         filter {
             where(
                 `ilike?`(table::name),
+                `in?`(table::edition),
                 `between?`(table::price)
             )
+            sort()
             orderBy(table.id.desc())
         }
 
@@ -112,6 +114,39 @@ routing {
                 it.copy { name = it.name.uppercase() }
             }
         }
+
+        // Per-operation write config: save mode + response projection
+        create {
+            saveMode = SaveMode.UPSERT
+            fetcher {
+                fetch.by {
+                    name()
+                    edition()
+                    price()
+                }
+            }
+        }
+        edit {
+            fetcher {
+                fetch.by {
+                    name()
+                    edition()
+                    price()
+                }
+            }
+        }
+        patch { }   // enable PATCH partial update
+        batch { }   // enable batch endpoints
+
+        // Custom actions
+        action {
+            get("stats") {
+                val count = sqlClient.createQuery(Book::class) {
+                    select(rowCount())
+                }.fetchUnlimitedCount()
+                call.respond(mapOf("count" to count))
+            }
+        }
     }
 }
 ```
@@ -124,9 +159,16 @@ routing {
 |--------|------|-------------|
 | `GET` | `/book/{id}` | Fetch one entity by id (404 when missing) |
 | `GET` | `/book` | Filterable, pageable list |
+| `GET` | `/book/count` | Filtered total count |
+| `GET` | `/book/exists/{id}` | Whether the entity exists (`true`/`false`) |
 | `POST` | `/book` | Create (`INSERT_ONLY`) |
 | `PUT` | `/book` | Update (`UPDATE_ONLY`, the body carries the id) |
+| `PATCH` | `/book` | Partial update (enabled by `patch {}`) |
+| `POST` | `/book/batch` | Batch create (enabled by `batch {}`) |
+| `PUT` | `/book/batch` | Batch update (enabled by `batch {}`) |
+| `DELETE` | `/book/batch?ids=1,2` | Batch delete (enabled by `batch {}`) |
 | `DELETE` | `/book/{id}` | Delete by id |
+| custom | `/book/...` | Routes registered via `action {}` |
 
 ```bash
 # Create
@@ -155,10 +197,16 @@ Extension functions inside `filter` bind request parameters to predicates:
 
 | Extension | Query parameter | Example |
 |-----------|-----------------|---------|
-| `eq?` | `{field}` | `?name=GraphQL` |
+| `eq?` | `{field}` (plain first, then `__exact`) | `?name=GraphQL` |
+| `notEq?` | `{field}` | `?name=GraphQL` |
+| `in?` / `notIn?` | `{field}` comma-separated or repeated | `?id=1,2` |
+| `lt?` / `gt?` | `{field}__lt` / `{field}__gt` | `?price__lt=80` |
+| `le?` / `ge?` | `{field}__le` / `{field}__ge` | `?price__ge=50` |
 | `ilike?` | `{field}` + `__anywhere` / `__exact` / `__start` / `__end` | `?name__start=GraphQL` |
 | `between?` | `{field}__ge`, `{field}__le` | `?price__ge=50&price__le=80` |
+| `isNull` / `noNull` | static predicates | — |
 | Association fields | child table and field joined with `_` | `?store_name=O'REILLY` |
+| `sort()` | `sort=field,asc\|desc` (repeatable) | `?sort=price,desc&sort=id,asc` |
 
 Separators are configurable via `router`:
 
@@ -187,21 +235,36 @@ install(JimmerRest) {
 }
 ```
 
-## 7. Validation & error handling
-
-Validation failures throw `ValidationException`. Handle it centrally with `StatusPages`:
+Endpoint paths and query parameter names are centralized in `endpoint`:
 
 ```kotlin
-install(StatusPages) {
-    exception<ValidationException> { call, cause ->
-        call.respond(cause.httpStatusCode, cause.errors)
-    }
-
-    exception<ParseException> { call, cause ->
-        call.respondText(cause.message, status = HttpStatusCode.BadRequest)
+install(JimmerRest) {
+    endpoint {
+        batchPath = "batch"              // batch endpoint path
+        batchIdsParameterName = "ids"    // batch delete ids parameter
+        sortParameterName = "sort"       // dynamic sort parameter
+        countPath = "count"              // count endpoint path
+        existsPath = "exists/{id}"       // exists endpoint path
     }
 }
 ```
+
+## 7. Validation & error handling
+
+Validation failures throw `ValidationException`; parse failures throw `ParseException`.
+Wire a consistent `ApiError` envelope with a single call:
+
+```kotlin
+install(StatusPages) {
+    jimmerRestErrors() // ValidationException → 400, ParseException → 400, Throwable → 500
+}
+```
+
+```json
+{"status": 400, "code": "BAD_REQUEST", "message": "...", "errors": ["..."]}
+```
+
+The framework's own 404 (missing `/{id}`) also returns the envelope (`code: NOT_FOUND`).
 
 Jimmer's `UnloadedException` (reading an unloaded field) is caught by the default catcher
 and turned into a validation error.

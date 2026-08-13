@@ -8,11 +8,14 @@ Tired of writing the same CRUD boilerplate over and over? Try this!
 
 ## Features
 
-- **Full CRUD from a single `api<T>` block** — registers `GET /{id}`, `GET` (list), `POST`, `PUT` and `DELETE /{id}` routes automatically
-- **Declarative filtering** — reuse Jimmer's Kotlin query DSL, or plug in a `KSpecification` DTO
-- **Nullable query extensions** — `eq?`, `ilike?`, `between?`, `noNull` map request parameters to predicates safely
+- **Full CRUD from a single `api<T>` block** — registers query/create/update/delete routes plus `count` / `exists`, with opt-in `PATCH` and batch endpoints
+- **Declarative filtering & sorting** — reuse Jimmer's Kotlin query DSL; `eq?`, `in?`, `lt?`/`gt?`, `ilike?`, `between?` map parameters automatically, `sort()` for dynamic ordering
+- **Configurable writes** — independent `create {}` / `edit {}` / `patch {}` blocks for save mode and response projection
 - **Flexible projection** — pick a `Fetcher` DSL or a generated `View` DTO
 - **Input & validation** — entity or Jimmer `Input` DTO, with a built-in validation DSL and transformers
+- **Batch operations** — `batch {}` enables batch create / update / delete
+- **Custom actions** — register arbitrary routes inside `api<T>` with `action {}`
+- **Unified errors** — `ApiError` envelope + one-line `jimmerRestErrors()`
 - **Customizable parsing & paging** — register parsers for your own types, configure defaults and custom page objects
 - **Plug & play** — everything is configured through the `JimmerRest` Ktor plugin
 

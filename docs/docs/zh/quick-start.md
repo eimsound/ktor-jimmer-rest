@@ -72,7 +72,7 @@ interface Book : BaseEntity {
 
 ## 4. 声明 API
 
-一行 `api<Book>("/book")` 即可注册五条 REST 路由：
+一行 `api<Book>("/book")` 即可注册全套 REST 路由（block 只在注册时执行一次）：
 
 ```kotlin
 routing {
@@ -81,8 +81,10 @@ routing {
         filter {
             where(
                 `ilike?`(table::name),
+                `in?`(table::edition),
                 `between?`(table::price)
             )
+            sort()
             orderBy(table.id.desc())
         }
 
@@ -111,6 +113,39 @@ routing {
                 it.copy { name = it.name.uppercase() }
             }
         }
+
+        // 写操作独立配置：保存模式 + 响应投影
+        create {
+            saveMode = SaveMode.UPSERT
+            fetcher {
+                fetch.by {
+                    name()
+                    edition()
+                    price()
+                }
+            }
+        }
+        edit {
+            fetcher {
+                fetch.by {
+                    name()
+                    edition()
+                    price()
+                }
+            }
+        }
+        patch { }   // 启用 PATCH 部分更新
+        batch { }   // 启用批量端点
+
+        // 自定义动作
+        action {
+            get("stats") {
+                val count = sqlClient.createQuery(Book::class) {
+                    select(rowCount())
+                }.fetchUnlimitedCount()
+                call.respond(mapOf("count" to count))
+            }
+        }
     }
 }
 ```
@@ -123,9 +158,16 @@ routing {
 |------|------|------|
 | `GET` | `/book/{id}` | 按 id 查询单个实体，不存在返回 404 |
 | `GET` | `/book` | 过滤 + 分页的列表查询 |
+| `GET` | `/book/count` | 过滤后的总数 |
+| `GET` | `/book/exists/{id}` | 是否存在（true/false） |
 | `POST` | `/book` | 创建（`INSERT_ONLY`） |
 | `PUT` | `/book` | 更新（`UPDATE_ONLY`，请求体携带 id） |
+| `PATCH` | `/book` | 部分更新（`patch {}` 启用，缺省字段不覆盖） |
+| `POST` | `/book/batch` | 批量创建（`batch {}` 启用） |
+| `PUT` | `/book/batch` | 批量更新（`batch {}` 启用） |
+| `DELETE` | `/book/batch?ids=1,2` | 批量删除（`batch {}` 启用） |
 | `DELETE` | `/book/{id}` | 按 id 删除 |
+| 自定义 | `/book/...` | `action {}` 注册的路由 |
 
 ```bash
 # 创建
@@ -139,10 +181,25 @@ curl http://localhost:8081/book/1
 # 列表 + 过滤 + 分页
 curl "http://localhost:8081/book?name__start=GraphQL&price__ge=50&pageIndex=0&pageSize=10"
 
+# 计数 / 存在性
+curl http://localhost:8081/book/count
+curl http://localhost:8081/book/exists/1
+
 # 更新
 curl -X PUT http://localhost:8081/book \
   -H "Content-Type: application/json" \
   -d '{"id":1,"name":"Learning GraphQL","edition":1,"price":55}'
+
+# 部分更新（PATCH）
+curl -X PATCH http://localhost:8081/book \
+  -H "Content-Type: application/json" \
+  -d '{"id":1,"price":55}'
+
+# 批量创建 / 批量删除
+curl -X POST http://localhost:8081/book/batch \
+  -H "Content-Type: application/json" \
+  -d '[{"name":"A","edition":1,"price":50},{"name":"B","edition":1,"price":60}]'
+curl -X DELETE "http://localhost:8081/book/batch?ids=1,2"
 
 # 删除
 curl -X DELETE http://localhost:8081/book/1
@@ -154,10 +211,16 @@ filter 中的扩展函数会自动把查询参数映射为条件：
 
 | 扩展函数 | 查询参数 | 示例 |
 |----------|----------|------|
-| `eq?` | `{字段名}` | `?name=GraphQL` |
+| `eq?` | `{字段名}`（无后缀优先，其次 `__exact`） | `?name=GraphQL` |
+| `notEq?` | `{字段名}` | `?name=GraphQL` |
+| `in?` / `notIn?` | `{字段名}` 逗号分隔或重复参数 | `?id=1,2` |
+| `lt?` / `gt?` | `{字段名}__lt` / `{字段名}__gt` | `?price__lt=80` |
+| `le?` / `ge?` | `{字段名}__le` / `{字段名}__ge` | `?price__ge=50` |
 | `ilike?` | `{字段名}` + `__anywhere` / `__exact` / `__start` / `__end` | `?name__start=GraphQL` |
 | `between?` | `{字段名}__ge`、`{字段名}__le` | `?price__ge=50&price__le=80` |
+| `isNull` / `noNull` | 静态谓词 | — |
 | 关联表字段 | 子表名与字段名用 `_` 连接 | `?store_name=O'REILLY` |
+| `sort()` | `sort=字段,asc\|desc`（可重复） | `?sort=price,desc&sort=id,asc` |
 
 参数分隔符可以通过 `router` 配置修改：
 
@@ -185,21 +248,35 @@ install(JimmerRest) {
 }
 ```
 
-## 7. 校验与异常处理
-
-校验失败会抛出 `ValidationException`，建议在 `StatusPages` 中统一处理：
+端点路径与查询参数名等字面量统一收进 `endpoint` 配置：
 
 ```kotlin
-install(StatusPages) {
-    exception<ValidationException> { call, cause ->
-        call.respond(cause.httpStatusCode, cause.errors)
-    }
-
-    exception<ParseException> { call, cause ->
-        call.respondText(cause.message, status = HttpStatusCode.BadRequest)
+install(JimmerRest) {
+    endpoint {
+        batchPath = "batch"              // 批量端点路径
+        batchIdsParameterName = "ids"    // 批量删除参数名
+        sortParameterName = "sort"       // 动态排序参数名
+        countPath = "count"              // 计数端点路径
+        existsPath = "exists/{id}"       // 存在性端点路径
     }
 }
 ```
+
+## 7. 校验与异常处理
+
+校验失败会抛出 `ValidationException`，参数解析失败抛 `ParseException`。用一行 `jimmerRestErrors()` 即可统一为 `ApiError` envelope：
+
+```kotlin
+install(StatusPages) {
+    jimmerRestErrors() // ValidationException → 400、ParseException → 400、Throwable → 500
+}
+```
+
+```json
+{"status": 400, "code": "BAD_REQUEST", "message": "...", "errors": ["..."]}
+```
+
+框架自身的 404（`GET /book/{id}` 不存在）也会返回 envelope（`code: NOT_FOUND`）。
 
 Jimmer 读取未加载字段时抛出的 `UnloadedException` 已被默认的 catcher 捕获并转为校验错误。
 

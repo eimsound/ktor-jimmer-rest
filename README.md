@@ -4,7 +4,8 @@ A Ktor plugin that provides a concise DSL-style API for building RESTful web ser
 based on [Ktor](https://github.com/ktorio/ktor) and [Jimmer](https://github.com/babyfish-ct/jimmer?tab=readme-ov-file)
 
 With one `api<T> {}` block you get the full set of CRUD endpoints for a Jimmer entity:
-`GET /{id}`, `GET` (filterable, pageable list), `POST`, `PUT`, and `DELETE /{id}`.
+`GET /{id}`, `GET` (filterable, pageable list), `GET /count`, `GET /exists/{id}`, `POST`, `PUT`,
+`DELETE /{id}`, plus opt-in `PATCH` and batch endpoints.
 
 <a href="./LICENSE">
     <img src="https://img.shields.io/github/license/eimsound/ktor-jimmer-rest.svg" alt="license">
@@ -15,11 +16,17 @@ With one `api<T> {}` block you get the full set of CRUD endpoints for a Jimmer e
 
 ## Features
 
-- **Zero-boilerplate CRUD** — declare `api<Book>("/book") {}` and the five REST routes are registered for you
+- **Zero-boilerplate CRUD** — declare `api<Book>("/book") {}` and all routes are registered for you
 - **Declarative filtering** — reuse Jimmer's Kotlin query DSL, or plug in a Jimmer `KSpecification` DTO
-- **Nullable query extensions** — `eq?`, `ilike?`, `between?`, `noNull` map request parameters to predicates safely
+- **Nullable query extensions** — `eq?`, `notEq?`, `in?`, `lt?`/`gt?`/`le?`/`ge?`, `ilike?`, `between?`, `isNull` map request parameters to predicates safely
+- **Dynamic sorting** — `sort()` maps `?sort=price,desc` to `orderBy`
 - **Flexible projection** — choose a Jimmer `Fetcher` DSL or a generated `View` DTO
 - **Input & validation** — use the entity or a Jimmer `Input` DTO, with a built-in validation DSL and transformers
+- **Per-operation write config** — `create {}` / `edit {}` / `patch {}` with configurable `SaveMode` and response projection
+- **Batch operations** — opt-in `POST/PUT/DELETE /{path}/batch`
+- **count / exists** — always-available `GET /{path}/count` and `GET /{path}/exists/{id}`
+- **Custom actions** — register arbitrary Ktor routes inside `api<T>` with `action {}`
+- **Unified errors** — `ApiError` envelope + one-line `jimmerRestErrors()` wiring
 - **Customizable parsing & paging** — register parsers for your own types, configure default page size and custom page objects
 - **Plug & play** — everything is configured through the `JimmerRest` Ktor plugin
 
@@ -52,7 +59,7 @@ install(JimmerRest) {
 
 ### Configuration
 
-The plugin exposes three configuration blocks:
+The plugin exposes four configuration blocks:
 
 ```kotlin
 install(JimmerRest) {
@@ -80,47 +87,47 @@ install(JimmerRest) {
         subParameterSeparator = "_"    // e.g. store_name
         defaultPathVariable = "{id}"
     }
+
+    endpoint {
+        batchPath = "batch"            // batch endpoints: /book/batch
+        batchIdsParameterName = "ids"  // batch delete: ?ids=1,2
+        sortParameterName = "sort"     // dynamic sort: ?sort=price,desc
+        countPath = "count"            // count: /book/count
+        existsPath = "exists/{id}"     // exists: /book/exists/{id}
+    }
 }
 ```
 
 ## Usage
 
-`api<T>` registers `create | remove | edit | id | list` routes for the entity. For detailed usage, refer to
+`api<T>` registers all routes for the entity. For detailed usage, refer to
 the [documentation](https://ktor-jimmer-rest.eimsound.github.com).
 
 ```kotlin
-api<Book> {
-    
+api<Book>("/book") {
     // use specification dto or filter dsl
     // filter(BookSpec::class)
     filter {
         where(
-            `ilike?`(table::name),
-            `ilike?`(table.store::name),
-            `between?`(table::price),
-            table.edition.`between?`(call["price", "ge"], call["price", "le"])
+            `ilike?`(table::name),          // ?name__start=GraphQL
+            `in?`(table::edition),          // ?edition=1,2
+            `between?`(table::price)        // ?price__ge=50&price__le=80
         )
+        sort()                              // ?sort=price,desc
         orderBy(table.id.desc())
     }
-    
+
     // use view dto or fetcher dsl
     // fetcher(BookView::class)
     fetcher {
         fetch.by {
             allScalarFields()
             name()
-            store {
-                name()
-                website()
-            }
-            authors {
-                name()
-                firstName()
-                lastName()
-            }
+            store { name(); website() }
+            authors { name(); firstName(); lastName() }
         }
     }
-    
+
     // use input dto or entity dsl
     // input(BookInput::class) {}
     input {
@@ -136,21 +143,37 @@ api<Book> {
             it.copy { name = it.name.uppercase() }
         }
     }
+
+    // per-operation write config (C1/C4)
+    create {
+        saveMode = SaveMode.UPSERT          // upsert on business key
+        fetcher { fetch.by { name(); edition(); price() } }  // response projection
+    }
+    edit {
+        fetcher { fetch.by { name(); edition(); price() } }
+    }
+    patch { }                               // enable PATCH (own config, same semantics as PUT)
+    batch { }                               // enable POST/PUT/DELETE /book/batch
+
+    // custom actions (C7)
+    action {
+        get("stats") {
+            val count = sqlClient.createQuery(Book::class) {
+                select(rowCount())
+            }.fetchUnlimitedCount()
+            call.respond(mapOf("count" to count))
+        }
+    }
 }
 ```
 
-* Inside ``api<T>{}``, ``T`` is a jimmer entity class, used to mark the context type
+* Inside ``api<T>{}``, ``T`` is a jimmer entity class, used to mark the context type.
+  The block runs **once at registration**; request-dependent parts (`filter`, `key { call -> }`) are stored as request-time lambdas.
 * The filter conditions inside ``filter`` are the functions provided by jimmer, and we have added extensions to these
-  functions,
-  for example, `` `between?`(table::price) `` is nullable and will be mapped to the ``price__ge | price__le`` query
-  parameter,
-  and for ``__ge | __le``, it is a special extension of `` `between?` ``, `` `ilike?` `` can be used with the suffixes
-  `` __anywhere | __exact | __start | __end ``, which correspond to different filtering functions, see
-  the [documentation](https://ktor-jimmer-rest.eimsound.github.com) for details
-* The fetcher then continues to use the functionality of jimmer, jimmer is indeed a very powerful orm framework, and writing
-  it is very elegant, please refer to [jimmer's documentation](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/welcome)
-  for details
-* The input includes validator and transformer, which can be used to validate and transform objects
+  functions that map request parameters to predicates automatically (see the table below).
+* The fetcher continues to use the functionality of jimmer; please refer to
+  [jimmer's documentation](https://babyfish-ct.github.io/jimmer-doc/zh/docs/overview/welcome) for details.
+* The input includes validator and transformer, which can be used to validate and transform objects.
 
 ### Generated routes
 
@@ -158,11 +181,18 @@ For `api<Book>("/book")`, the following endpoints are available:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/book/{id}` | Fetch one entity by id (404 when missing) |
+| `GET` | `/book/{id}` | Fetch one entity by id (404 with `ApiError` when missing) |
 | `GET` | `/book` | Filterable, pageable list |
-| `POST` | `/book` | Create (`INSERT_ONLY`) |
-| `PUT` | `/book` | Update (`UPDATE_ONLY`, entity from the request body carries the id) |
+| `GET` | `/book/count` | Filtered total count |
+| `GET` | `/book/exists/{id}` | `true` / `false` |
+| `POST` | `/book` | Create |
+| `PUT` | `/book` | Update (entity from the request body carries the id) |
+| `PATCH` | `/book` | Partial update (enabled by `patch {}`) |
+| `POST` | `/book/batch` | Batch create (enabled by `batch {}`) |
+| `PUT` | `/book/batch` | Batch update (enabled by `batch {}`) |
+| `DELETE` | `/book/batch?ids=1,2` | Batch delete (enabled by `batch {}`) |
 | `DELETE` | `/book/{id}` | Delete by id |
+| custom | `/book/...` | Routes registered via `action {}` |
 
 ### Query parameters
 
@@ -170,21 +200,43 @@ Filter predicates are bound to request parameters automatically:
 
 | Extension | Query parameter | Example |
 |-----------|-----------------|---------|
-| `eq?` | `{name}` | `?name=GraphQL` |
+| `eq?` | `{name}` (plain, or `__exact`) | `?name=GraphQL` |
+| `notEq?` | `{name}` | `?name=GraphQL` |
+| `in?` / `notIn?` | `{name}` comma-separated or repeated | `?id=1,2` |
+| `lt?` / `gt?` | `{name}__lt` / `{name}__gt` | `?price__lt=80` |
+| `le?` / `ge?` | `{name}__le` / `{name}__ge` | `?price__ge=50` |
 | `ilike?` | `{name}` + optional `__anywhere \| __exact \| __start \| __end` | `?name__start=GraphQL` |
 | `between?` | `{name}__ge`, `{name}__le` | `?price__ge=50&price__le=80` |
+| `isNull` / `noNull` | static predicates | — |
 | nested table | sub-fields joined by `_` | `?store_name=O'REILLY` |
+| `sort()` | `sort=字段,asc\|desc` (repeatable) | `?sort=price,desc&sort=id,asc` |
 
 List endpoints accept `pageIndex` and `pageSize` (defaults: `0` and `10`, configurable via `pager`).
+
+### Unified error responses
+
+All errors can be returned as a consistent envelope via `jimmerRestErrors()`:
+
+```kotlin
+install(StatusPages) {
+    jimmerRestErrors() // ValidationException → 400, ParseException → 400, Throwable → 500
+}
+```
+
+```json
+{"status": 400, "code": "BAD_REQUEST", "message": "...", "errors": ["..."]}
+```
+
+The framework's own 404 (missing `/{id}`) also returns the envelope (`NOT_FOUND`).
 
 ## Modules
 
 | Module | Responsibility |
 |--------|----------------|
-| `ktor-jimmer-rest-config` | `JimmerRest` Ktor plugin, router / parser / pager configuration |
-| `ktor-jimmer-rest-route` | Route registration (`api`, `id`, `list`, `create`, `edit`, `remove`) |
+| `ktor-jimmer-rest-config` | `JimmerRest` Ktor plugin, router / parser / pager / endpoint configuration |
+| `ktor-jimmer-rest-route` | Route registration (`api`, `id`, `list`, `count`, `exists`, `create`, `edit`, `patch`, `remove`, batch) |
 | `ktor-jimmer-rest-provider` | DSL scopes and providers (filter, fetcher, input, validator, transformer) |
-| `ktor-jimmer-rest-validator` | Validation DSL and exception handling |
+| `ktor-jimmer-rest-validator` | Validation DSL, `ApiError` envelope and exception handling |
 | `ktor-jimmer-rest-util` | Parameter parsing, paging helpers, Jimmer extensions |
 
 ## Sample
