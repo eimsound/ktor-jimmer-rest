@@ -18,16 +18,10 @@ inline fun <reified TEntity : Any> Route.id(
     crossinline block: suspend QueryProvider<TEntity>.() -> Unit,
 ) = get(pathVariable) {
     val provider = QueryScope<TEntity>(call).apply { block() }
-    val key = provider.key ?: call.pathParameter(pathVariable.removeSurrounding("{", "}"))
-        .parse(entityIdType<TEntity>())
+    val key = call.resolveKey(provider, pathVariable)
     val fetcher = provider.fetcher
     val result = if (fetcher != null) {
-        when (fetcher) {
-            is Fetchers.Fetch<TEntity> ->
-                sqlClient.findById(fetcher.fetcher, key)
-            is Fetchers.ViewType<TEntity> ->
-                sqlClient.findById(fetcher.viewType, key)
-        }
+        sqlClient.findById(fetcher, key)
     } else {
         sqlClient.findById(TEntity::class, key)
     }
@@ -44,4 +38,16 @@ interface QueryProvider<T : Any> : FetcherProvider<T>, CallProvider, KeyProvider
 class QueryScope<T : Any>(override val call: RoutingCall) : QueryProvider<T> {
     override var fetcher: Fetchers<T>? = null
     override var key: Any? = null
+    override var keyResolver: ((RoutingCall) -> Any?)? = null
 }
+
+/**
+ * 解析 id/remove 的 key：静态 key → keyResolver → 路径参数。
+ */
+@PublishedApi
+internal inline fun <reified TEntity : Any> RoutingCall.resolveKey(
+    provider: KeyProvider<TEntity>,
+    pathVariable: String,
+): Any = provider.key
+    ?: provider.keyResolver?.invoke(this)
+    ?: pathParameter(pathVariable.removeSurrounding("{", "}")).parse(entityIdType<TEntity>())

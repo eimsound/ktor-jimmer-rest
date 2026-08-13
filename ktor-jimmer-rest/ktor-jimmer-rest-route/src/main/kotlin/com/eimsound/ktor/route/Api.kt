@@ -1,51 +1,62 @@
 package com.eimsound.ktor.route
 
 import com.eimsound.ktor.config.Configuration
-import com.eimsound.ktor.provider.*
-import com.eimsound.util.ktor.Pager
 import io.ktor.server.routing.*
 
+/**
+ * 为一个 Jimmer 实体注册完整 CRUD 路由：`GET /{id}`、`GET`（列表）、`POST`、`PUT`，
+ * 以及可选（`patch {}` 启用）的 `PATCH`、`DELETE /{id}`。
+ *
+ * block 只在注册时执行一次，构建 [ApiConfig]；依赖请求上下文的部分（filter、key）
+ * 以请求期 lambda 形式存储。
+ */
 @JvmName("api")
 inline fun <reified TEntity : Any> Route.api(
     path: String,
     pathVariable: String = Configuration.router.defaultPathVariable,
-    crossinline block: suspend ApiScope<TEntity>.() -> Unit,
-) = route(path) {
-    id<TEntity>(pathVariable) {
-        val scope = ApiScope<TEntity>(call).apply { block() }
-        key = scope.key
-        fetcher = scope.fetcher
+    crossinline block: ApiConfig<TEntity>.() -> Unit,
+) {
+    val config = ApiConfig<TEntity>().apply { block() }
+    route(path) {
+        id<TEntity>(pathVariable) {
+            fetcher = config.fetcher
+            key = config.key
+            keyResolver = config.keyResolver
+        }
+        list<TEntity> {
+            fetcher = config.fetcher
+            filter = config.filter
+            pager = config.pager
+        }
+        create<TEntity> {
+            input = config.create.input
+            validator = config.create.validator
+            transformer = config.create.transformer
+            saveMode = config.create.saveMode
+            associatedSaveMode = config.create.associatedSaveMode
+            fetcher = config.create.fetcher
+        }
+        edit<TEntity> {
+            input = config.edit.input
+            validator = config.edit.validator
+            transformer = config.edit.transformer
+            saveMode = config.edit.saveMode
+            associatedSaveMode = config.edit.associatedSaveMode
+            fetcher = config.edit.fetcher
+        }
+        if (config.patchEnabled) {
+            patch<TEntity> {
+                input = config.edit.input
+                validator = config.edit.validator
+                transformer = config.edit.transformer
+                saveMode = config.edit.saveMode
+                associatedSaveMode = config.edit.associatedSaveMode
+                fetcher = config.edit.fetcher
+            }
+        }
+        remove<TEntity>(pathVariable) {
+            key = config.key
+            keyResolver = config.keyResolver
+        }
     }
-    list<TEntity> {
-        val scope = ApiScope<TEntity>(call).apply { block() }
-        fetcher = scope.fetcher
-        filter = scope.filter
-        pager = scope.pager
-    }
-    create<TEntity> {
-        val scope = ApiScope<TEntity>(call).apply { block() }
-        input = scope.input
-        validator = scope.validator
-        transformer = scope.transformer
-    }
-    edit<TEntity> {
-        val scope = ApiScope<TEntity>(call).apply { block() }
-        input = scope.input
-        validator = scope.validator
-        transformer = scope.transformer
-    }
-    remove<TEntity>(pathVariable) {
-        val scope = ApiScope<TEntity>(call).apply { block() }
-        key = scope.key
-    }
-}
-class ApiScope<T : Any>(override val call: RoutingCall) : QueryProvider<T>, ListProvider<T>,
-    EditProvider<T>, CreateProvider<T>, RemoveProvider<T> {
-    override var key: Any? = null
-    override var input: Inputs<T> = Inputs.Entity()
-    override var validator: Validators<T>? = null
-    override var fetcher: Fetchers<T>? = null
-    override var filter: Filters<T>? = null
-    override var transformer: Transformers<T>? = null
-    override var pager: Pager = Pager()
 }

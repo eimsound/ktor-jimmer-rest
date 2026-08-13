@@ -2,7 +2,7 @@ package com.eimsound.rest.test.infra
 
 import com.eimsound.ktor.plugin.*
 import com.eimsound.ktor.provider.*
-import com.eimsound.ktor.route.api
+import com.eimsound.ktor.route.*
 import com.eimsound.ktor.validator.exception.ValidationException
 import com.eimsound.rest.test.entity.*
 import io.ktor.client.HttpClient
@@ -21,6 +21,8 @@ import io.ktor.server.routing.Routing
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import org.babyfish.jimmer.jackson.v3.ImmutableModuleV3
+import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
+import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 
 fun Application.jimmerRestTestModule(routes: Routing.() -> Unit) {
@@ -179,6 +181,48 @@ fun Route.sortRoutes(path: String = "/book-sort") {
     api<Book>(path) {
         filter {
             sort()
+        }
+    }
+}
+
+fun Route.upsertRoutes(path: String = "/book-upsert") {
+    api<Book>(path) {
+        create {
+            saveMode = SaveMode.UPSERT
+            associatedSaveMode = AssociatedSaveMode.MERGE
+        }
+    }
+}
+
+fun Route.projectionRoutes(path: String = "/book-projection") {
+    api<Book>(path) {
+        create {
+            fetcher {
+                fetch.by {
+                    name()
+                }
+            }
+        }
+        edit {
+            fetcher {
+                fetch.by {
+                    name()
+                }
+            }
+        }
+    }
+}
+
+fun Route.patchRoutes(path: String = "/book-patch") {
+    api<Book>(path) {
+        patch { }
+    }
+}
+
+fun Route.keyResolverRoutes(path: String = "/book-key") {
+    api<Book>(path) {
+        key { call ->
+            call.request.queryParameters["keyId"]?.toLong()
         }
     }
 }

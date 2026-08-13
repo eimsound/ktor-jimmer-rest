@@ -1,9 +1,6 @@
 package com.eimsound.ktor.route
 
-import com.eimsound.jimmer.sqlClient
 import com.eimsound.ktor.provider.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
@@ -13,31 +10,18 @@ inline fun <reified TEntity : Any> Route.edit(
     crossinline block: suspend EditProvider<TEntity>.() -> Unit,
 ) = put(path) {
     val provider = EditScope<TEntity>(call).apply { block() }
-    val input = provider.input
-    val validator = provider.validator
-    val transformer = provider.transformer
-    val result = when (input) {
-        is Inputs.Entity -> {
-            val body = call.receive<TEntity>()
-            validator.validate(body)
-            val entity = transformer.transform(body)
-            sqlClient.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
-        }
-
-        is Inputs.InputType -> {
-            val body = call.receive(input.inputType)
-            validator.validate(body)
-            val entity = transformer.transform(body)
-            sqlClient.save(entity, SaveMode.UPDATE_ONLY, AssociatedSaveMode.UPDATE)
-        }
-    }
-    call.respond(result.modifiedEntity)
+    call.performSave(provider)
 }
 
-interface EditProvider<T : Any> : CallProvider, InputProvider<T>, ValidatorProvider<T>, TransformProvider<T>
+interface EditProvider<T : Any> : CallProvider, SaveProvider<T>
 
-class EditScope<T : Any>(override val call: RoutingCall) : EditProvider<T> {
+class EditScope<T : Any>(
+    override val call: RoutingCall
+) : EditProvider<T> {
     override var input: Inputs<T> = Inputs.Entity()
     override var validator: Validators<T>? = null
     override var transformer: Transformers<T>? = null
+    override var fetcher: Fetchers<T>? = null
+    override var saveMode: SaveMode = SaveMode.UPDATE_ONLY
+    override var associatedSaveMode: AssociatedSaveMode = AssociatedSaveMode.UPDATE
 }

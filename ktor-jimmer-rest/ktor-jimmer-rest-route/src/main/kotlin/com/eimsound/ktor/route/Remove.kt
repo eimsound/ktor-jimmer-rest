@@ -15,8 +15,7 @@ inline fun <reified TEntity : Any> Route.remove(
     crossinline block: suspend RemoveProvider<TEntity>.() -> Unit,
 ) = delete(path) {
     val provider = RemoveScope<TEntity>(call).apply { block() }
-    val key = provider.key ?: call.pathParameter(path.removeSurrounding("{", "}"))
-        .parse(entityIdType<TEntity>())
+    val key = call.resolveKey(provider, path)
 
     sqlClient.deleteById(TEntity::class, key)
     call.response.status(HttpStatusCode.OK)
@@ -26,4 +25,5 @@ interface RemoveProvider<T : Any> : CallProvider, KeyProvider<T>
 
 class RemoveScope<T : Any>(override val call: RoutingCall) : RemoveProvider<T> {
     override var key: Any? = null
+    override var keyResolver: ((RoutingCall) -> Any?)? = null
 }
