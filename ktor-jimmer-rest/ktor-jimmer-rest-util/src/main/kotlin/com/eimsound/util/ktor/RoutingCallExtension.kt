@@ -164,6 +164,29 @@ inline fun <T : Any> RoutingCall.queryParameter(type: KClass<T>, name: String): 
 inline fun <reified T : Any> RoutingCall.queryParameter(name: String): T? = queryParameter(T::class, name)
 
 /**
+ * 获取某个查询参数的全部值（支持逗号分隔与重复参数），并解析为类型化列表。
+ *
+ * 例如 `?id=1,2&id=3` → `[1, 2, 3]`。
+ *
+ * @param type 参数解析类型
+ * @param name 参数名
+ * @return 解析后的值列表（空值/缺失返回空列表）
+ * @throws io.ktor.http.parsing.ParseException 参数值解析失败
+ */
+fun <T : Any> RoutingCall.queryParameterValues(type: KClass<T>, name: String): List<T> =
+    queryParameters.getAll(name).orEmpty()
+        .flatMap { it.split(",") }
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .map { it.parse(type) }
+
+/**
+ * 获取某个查询参数的全部值（支持逗号分隔与重复参数），并解析为类型化列表。
+ */
+inline fun <reified T : Any> RoutingCall.queryParameterValues(name: String): List<T> =
+    queryParameterValues(T::class, name)
+
+/**
  * An extension property for RoutingCall to get the default path variable.
  *
  * This property retrieves the first path variable from the RoutingCall's path parameters.

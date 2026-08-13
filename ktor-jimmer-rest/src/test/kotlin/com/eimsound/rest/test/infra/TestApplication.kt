@@ -112,3 +112,73 @@ fun Route.orderRoutes(path: String = "/order-item") {
         }
     }
 }
+
+fun Route.eqRoutes(path: String = "/book-eq") {
+    api<Book>(path) {
+        filter {
+            where(`eq?`(table::name))
+        }
+    }
+}
+
+fun Route.inRoutes(path: String = "/book-in") {
+    api<Book>(path) {
+        filter {
+            where(`in?`(table::id))
+        }
+    }
+}
+
+fun Route.notInRoutes(path: String = "/book-not-in") {
+    api<Book>(path) {
+        filter {
+            where(`notIn?`(table::id))
+        }
+    }
+}
+
+fun Route.comparisonRoutes(path: String = "/book-comparison") {
+    api<Book>(path) {
+        filter {
+            where(
+                `lt?`(table::price),
+                `gt?`(table::price)
+            )
+        }
+    }
+}
+
+fun Route.inclusiveRoutes(path: String = "/book-inclusive") {
+    api<Book>(path) {
+        filter {
+            where(
+                `le?`(table::price),
+                `ge?`(table::price)
+            )
+        }
+    }
+}
+
+fun Route.notEqRoutes(path: String = "/book-not-eq") {
+    api<Book>(path) {
+        filter {
+            where(`notEq?`(table::name))
+        }
+    }
+}
+
+fun Route.isNullRoutes(path: String = "/order-null") {
+    api<OrderItem>(path) {
+        filter {
+            where(isNull(table::store_name))
+        }
+    }
+}
+
+fun Route.sortRoutes(path: String = "/book-sort") {
+    api<Book>(path) {
+        filter {
+            sort()
+        }
+    }
+}
