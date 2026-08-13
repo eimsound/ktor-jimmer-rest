@@ -219,10 +219,51 @@ fun Route.patchRoutes(path: String = "/book-patch") {
     }
 }
 
+fun Route.patchIndependentRoutes(path: String = "/book-patch-independent") {
+    api<Book>(path) {
+        patch {
+            fetcher {
+                fetch.by {
+                    name()
+                }
+            }
+        }
+    }
+}
+
 fun Route.keyResolverRoutes(path: String = "/book-key") {
     api<Book>(path) {
         key { call ->
             call.request.queryParameters["keyId"]?.toLong()
+        }
+    }
+}
+
+fun Route.batchRoutes(
+    path: String = "/book-batch",
+    upsert: Boolean = false,
+    batchPath: String = "batch",
+    deleteIdsParameterName: String = "ids",
+) {
+    api<Book>(path) {
+        if (upsert) {
+            create {
+                saveMode = SaveMode.UPSERT
+            }
+        }
+        input {
+            validator {
+                with(it) {
+                    ::name.notBlank { "名称不能为空" }
+                }
+            }
+            transformer {
+                it.copy { name = it.name.uppercase() }
+            }
+        }
+        batch {
+            this.path = batchPath
+            this.deleteIdsParameterName = deleteIdsParameterName
         }
     }
 }

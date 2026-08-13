@@ -46,12 +46,36 @@ inline fun <reified TEntity : Any> Route.api(
         }
         if (config.patchEnabled) {
             patch<TEntity> {
-                input = config.edit.input
-                validator = config.edit.validator
-                transformer = config.edit.transformer
-                saveMode = config.edit.saveMode
-                associatedSaveMode = config.edit.associatedSaveMode
-                fetcher = config.edit.fetcher
+                input = config.patch.input
+                validator = config.patch.validator
+                transformer = config.patch.transformer
+                saveMode = config.patch.saveMode
+                associatedSaveMode = config.patch.associatedSaveMode
+                fetcher = config.patch.fetcher
+            }
+        }
+        if (config.batchEnabled) {
+            val batchConfig = config.batch
+            if (batchConfig.createEnabled) {
+                createBatch<TEntity>(batchConfig.path) {
+                    input = config.create.input
+                    validator = config.create.validator
+                    transformer = config.create.transformer
+                    saveMode = config.create.saveMode
+                    associatedSaveMode = config.create.associatedSaveMode
+                }
+            }
+            if (batchConfig.updateEnabled) {
+                updateBatch<TEntity>(batchConfig.path) {
+                    input = config.edit.input
+                    validator = config.edit.validator
+                    transformer = config.edit.transformer
+                    saveMode = config.edit.saveMode
+                    associatedSaveMode = config.edit.associatedSaveMode
+                }
+            }
+            if (batchConfig.deleteEnabled) {
+                deleteBatch<TEntity>(batchConfig.path, batchConfig.deleteIdsParameterName)
             }
         }
         remove<TEntity>(pathVariable) {

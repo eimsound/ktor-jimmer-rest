@@ -1,6 +1,7 @@
 package com.eimsound.ktor.route
 
 import com.eimsound.ktor.provider.*
+import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.ktor.Pager
 import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.Input
@@ -23,11 +24,22 @@ class ApiConfig<T : Any> :
 
     val create = CreateConfig<T>()
     val edit = EditConfig<T>()
+    val patch = EditConfig<T>()
 
     /**
      * 是否注册 PATCH 路由（由 `patch {}` 块启用）。
      */
     var patchEnabled = false
+
+    /**
+     * 是否注册批量端点（由 `batch {}` 块启用）。
+     */
+    var batchEnabled = false
+
+    /**
+     * 批量端点配置（由 `batch {}` 块修改）。
+     */
+    val batch = BatchConfig()
 }
 
 /**
@@ -55,15 +67,16 @@ class EditConfig<T : Any> : SaveProvider<T> {
 }
 
 /**
- * 顶层 `input {}`：同时配置 create 与 edit（兼容原 api 语义）。
+ * 顶层 `input {}`：同时配置 create / edit / patch（兼容原 api 语义）。
  */
 fun <T : Any> ApiConfig<T>.input(block: EntityScope<T>.() -> Unit) {
     create.input(block)
     edit.input(block)
+    patch.input(block)
 }
 
 /**
- * 顶层 `input(InputType::class) {}`：同时配置 create 与 edit（兼容原 api 语义）。
+ * 顶层 `input(InputType::class) {}`：同时配置 create / edit / patch（兼容原 api 语义）。
  */
 fun <T : Any, TInput : Input<T>> ApiConfig<T>.input(
     type: KClass<TInput>,
@@ -71,6 +84,7 @@ fun <T : Any, TInput : Input<T>> ApiConfig<T>.input(
 ) {
     create.input(type, block)
     edit.input(type, block)
+    patch.input(type, block)
 }
 
 /**
@@ -88,9 +102,47 @@ fun <T : Any> ApiConfig<T>.edit(block: EditConfig<T>.() -> Unit) {
 }
 
 /**
- * 启用 PATCH 路由并配置（复用 edit 配置；传入空块即可启用）。
+ * 启用 PATCH 路由并配置（PATCH 有独立配置；传入空块即按默认启用）。
  */
 fun <T : Any> ApiConfig<T>.patch(block: EditConfig<T>.() -> Unit = {}) {
     patchEnabled = true
-    this.edit.apply(block)
+    this.patch.apply(block)
+}
+
+/**
+ * 启用批量端点（`POST/PUT/DELETE {path}/batch`），复用 create/edit 配置。
+ */
+fun <T : Any> ApiConfig<T>.batch(block: BatchConfig.() -> Unit = {}) {
+    batchEnabled = true
+    this.batch.apply(block)
+}
+
+/**
+ * 批量端点配置。
+ */
+class BatchConfig {
+    /**
+     * 批量端点路径（相对 api 路径），默认 `batch`（即 `{path}/batch`）。
+     */
+    var path: String = Configuration.endpoint.batchPath
+
+    /**
+     * 是否注册批量创建端点。
+     */
+    var createEnabled: Boolean = true
+
+    /**
+     * 是否注册批量更新端点。
+     */
+    var updateEnabled: Boolean = true
+
+    /**
+     * 是否注册批量删除端点。
+     */
+    var deleteEnabled: Boolean = true
+
+    /**
+     * 批量删除的 id 参数名，默认 `ids`（`?ids=1,2,3`）。
+     */
+    var deleteIdsParameterName: String = Configuration.endpoint.batchIdsParameterName
 }

@@ -10,6 +10,7 @@ object Configuration {
 
     val pager = PagerConfiguration()
 
+    val endpoint = EndpointConfiguration()
+
     lateinit var sqlClientFactory: () -> Lazy<KSqlClient>
 }
-

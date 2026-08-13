@@ -6,6 +6,7 @@ import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
 import com.eimsound.rest.test.infra.keyResolverRoutes
 import com.eimsound.rest.test.infra.patchRoutes
+import com.eimsound.rest.test.infra.patchIndependentRoutes
 import com.eimsound.rest.test.infra.projectionRoutes
 import com.eimsound.rest.test.infra.upsertRoutes
 import com.eimsound.ktor.route.api
@@ -145,5 +146,29 @@ class MutationConfigTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val body = response.body<Book>()
         assertEquals(second.id, body.id)
+    }
+
+    @Test
+    fun `patch has independent config from edit`() = testApplication {
+        val client = jimmerRestTestApp { patchIndependentRoutes() }
+        val book = TestEnv.saveBook(name = "Independent", edition = 1, price = BigDecimal("50"))
+
+        val patchResponse = client.patch("/book-patch-independent") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"id":${book.id},"price":60}""")
+        }
+        val putResponse = client.put("/book-patch-independent") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"id":${book.id},"name":"Independent","edition":1,"price":70}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, patchResponse.status)
+        val patchText = patchResponse.bodyAsText()
+        assertTrue(patchText.contains("\"name\""), patchText)
+        assertFalse(patchText.contains("\"price\""), patchText)
+
+        assertEquals(HttpStatusCode.OK, putResponse.status)
+        val putText = putResponse.bodyAsText()
+        assertTrue(putText.contains("\"price\""), putText)
     }
 }

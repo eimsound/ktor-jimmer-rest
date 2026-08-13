@@ -1,6 +1,7 @@
 package com.eimsound.ktor.provider
 
 import com.eimsound.util.ktor.default
+import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.ktor.ParameterNames
 import com.eimsound.util.ktor.ResolvedName
 import com.eimsound.util.ktor.queryParameter
@@ -172,7 +173,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.isNull(param: KProp
  *
  * @param parameterName 排序参数名，默认 `sort`
  */
-inline fun <reified T : Any> FilterScope<T>.sort(parameterName: String = "sort") {
+inline fun <reified T : Any> FilterScope<T>.sort(parameterName: String = Configuration.endpoint.sortParameterName) {
     call.queryParameters.getAll(parameterName).orEmpty().forEach { item ->
         val parts = item.split(",")
         val propertyName = parts[0].trim()

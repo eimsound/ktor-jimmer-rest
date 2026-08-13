@@ -26,5 +26,11 @@ val JimmerRest = createApplicationPlugin(
         subParameterSeparator = routerConfiguration.subParameterSeparator
         defaultPathVariable = routerConfiguration.defaultPathVariable
     }
+    val endpointConfiguration = pluginConfig.endpointConfiguration
+    Configuration.endpoint.apply {
+        batchPath = endpointConfiguration.batchPath
+        batchIdsParameterName = endpointConfiguration.batchIdsParameterName
+        sortParameterName = endpointConfiguration.sortParameterName
+    }
     Configuration.sqlClientFactory = pluginConfig.jimmerSqlClientFactory
 }
