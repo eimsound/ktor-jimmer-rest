@@ -19,4 +19,14 @@ class EndpointConfiguration {
      * 动态排序参数名，默认 `sort`（`?sort=price,desc`）。
      */
     var sortParameterName: String = "sort"
+
+    /**
+     * 计数端点路径，默认 `count`（`GET {path}/count`）。
+     */
+    var countPath: String = "count"
+
+    /**
+     * 存在性判断端点路径，默认 `exists/{id}`（`GET {path}/exists/{id}`）。
+     */
+    var existsPath: String = "exists/{id}"
 }

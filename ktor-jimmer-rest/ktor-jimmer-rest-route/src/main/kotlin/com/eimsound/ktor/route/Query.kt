@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.jimmer.sqlClient
 import com.eimsound.ktor.provider.Fetchers
+import com.eimsound.ktor.validator.ApiError
 import com.eimsound.util.ktor.pathParameter
 import com.eimsound.util.parser.parse
 import com.eimsound.util.jimmer.entityIdType
@@ -29,7 +30,7 @@ inline fun <reified TEntity : Any> Route.id(
     if (result != null) {
         call.respond(result)
     } else {
-        call.response.status(HttpStatusCode.NotFound)
+        call.respond(HttpStatusCode.NotFound, ApiError.notFound())
     }
 }
 

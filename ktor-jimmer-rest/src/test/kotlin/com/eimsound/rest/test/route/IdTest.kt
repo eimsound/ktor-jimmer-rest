@@ -4,6 +4,7 @@ import com.eimsound.rest.test.entity.Book
 import com.eimsound.rest.test.infra.TestEnv
 import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
+import com.eimsound.ktor.validator.ApiError
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
@@ -42,5 +43,8 @@ class IdTest {
         val response: HttpResponse = client.get("/book/999999")
 
         assertEquals(HttpStatusCode.NotFound, response.status)
+        val error = response.body<ApiError>()
+        assertEquals(404, error.status)
+        assertEquals("NOT_FOUND", error.code)
     }
 }

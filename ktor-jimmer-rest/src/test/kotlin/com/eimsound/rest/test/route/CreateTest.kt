@@ -4,6 +4,7 @@ import com.eimsound.rest.test.entity.Book
 import com.eimsound.rest.test.infra.TestEnv
 import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
+import com.eimsound.ktor.validator.ApiError
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -14,6 +15,7 @@ import io.ktor.server.testing.testApplication
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CreateTest {
 
@@ -51,6 +53,9 @@ class CreateTest {
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
+        val error = response.body<ApiError>()
+        assertEquals("BAD_REQUEST", error.code)
+        assertTrue(error.errors.any { it.contains("名称不能为空") }, error.errors.toString())
     }
 
     @Test

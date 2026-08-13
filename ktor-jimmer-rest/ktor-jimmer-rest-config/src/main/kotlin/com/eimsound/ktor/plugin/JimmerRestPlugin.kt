@@ -31,6 +31,8 @@ val JimmerRest = createApplicationPlugin(
         batchPath = endpointConfiguration.batchPath
         batchIdsParameterName = endpointConfiguration.batchIdsParameterName
         sortParameterName = endpointConfiguration.sortParameterName
+        countPath = endpointConfiguration.countPath
+        existsPath = endpointConfiguration.existsPath
     }
     Configuration.sqlClientFactory = pluginConfig.jimmerSqlClientFactory
 }

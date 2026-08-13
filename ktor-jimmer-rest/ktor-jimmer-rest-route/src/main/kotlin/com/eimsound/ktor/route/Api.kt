@@ -28,6 +28,13 @@ inline fun <reified TEntity : Any> Route.api(
             filter = config.filter
             pager = config.pager
         }
+        count<TEntity> {
+            filter = config.filter
+        }
+        exists<TEntity> {
+            key = config.key
+            keyResolver = config.keyResolver
+        }
         create<TEntity> {
             input = config.create.input
             validator = config.create.validator

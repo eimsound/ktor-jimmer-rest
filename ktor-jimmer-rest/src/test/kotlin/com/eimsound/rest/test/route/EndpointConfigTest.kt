@@ -24,6 +24,7 @@ import java.math.BigDecimal
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class EndpointConfigTest {
 
@@ -54,6 +55,8 @@ class EndpointConfigTest {
                 endpoint {
                     batchPath = "bulk"
                     sortParameterName = "orderBy"
+                    countPath = "count-all"
+                    existsPath = "exists/{bookId}"
                 }
             }
             routing {
@@ -77,5 +80,11 @@ class EndpointConfigTest {
         val page = client.get("/book-endpoint-config?orderBy=price,desc").body<BookPageDto>()
         assertEquals(3, page.rows.size)
         assertEquals(0, BigDecimal("80").compareTo(page.rows[0].price))
+
+        val count = client.get("/book-endpoint-config/count-all").body<Long>()
+        assertEquals(3L, count)
+
+        val exists = client.get("/book-endpoint-config/exists/${page.rows[0].id}").body<Boolean>()
+        assertTrue(exists)
     }
 }
