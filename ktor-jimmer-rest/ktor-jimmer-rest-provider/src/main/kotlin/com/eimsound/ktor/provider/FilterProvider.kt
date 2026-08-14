@@ -72,9 +72,9 @@ interface FilterQueryScope<T : Any> {
 }
 
 /**
- * 关联子表过滤作用域：`join(Book::authors) { ... }` 块内的 receiver。
+ * 关联子表过滤作用域：`where(Book::authors) { ... }` 块内的 receiver。
  * 持有子表（table）+ 请求上下文（call）+ 关联参数名前缀（如 `authors`）。
- * 块内通过类级属性引用（`Author::firstName`）配合 `ilike?` 等操作符使用，
+ * 块内通过子表属性引用（`table::firstName`）配合 `ilike?` 等操作符使用，
  * 参数名由前缀 + 属性名自动解析（如 `authors_firstName`），不依赖运行时 receiver 绑定。
  */
 @FilterDslMarker
@@ -106,11 +106,9 @@ inline fun <T : Any, TRelated : Any> FilterScope<T>.where(
     prop: KProperty1<T, List<TRelated>>,
     crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
 ): Unit {
-    where {
-        table.exists<TRelated>(prop.name) {
-            block(AssociationFilterScope(this, this@where.call, prop.name))
-        }
-    }
+    where(table.exists<TRelated>(prop.name) {
+        block(AssociationFilterScope(this, this@where.call, prop.name))
+    })
 }
 
 /**
