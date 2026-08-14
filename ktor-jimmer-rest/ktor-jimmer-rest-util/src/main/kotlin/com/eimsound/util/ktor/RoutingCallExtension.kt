@@ -102,6 +102,34 @@ inline fun <reified T : Any> RoutingCall.queryParameterExt(
 }
 
 /**
+ * 非 reified 版本的 [queryParameterExt]，供普通函数（非 inline）使用。
+ */
+fun <T : Any> RoutingCall.queryParameterExtValue(
+    type: KClass<T>,
+    name: String,
+    ext: String? = null,
+): T? = queryParameterExtMap(type, name)[ext]?.value
+
+/**
+ * 非 reified 版本的 [queryParameterExt]，返回完整参数映射。
+ */
+fun <T : Any> RoutingCall.queryParameterExtMap(
+    type: KClass<T>,
+    name: String,
+): ExtParameterMap<T> {
+    val nameWithExtList = findQueryParameterNameWithExt(name, Configuration.router.extParameterSeparator)
+    val map = nameWithExtList.map {
+        val (parameterName, parameterExt) = it
+        val parameter = Parameter<T>(parameterName).apply {
+            this.ext = parameterExt
+            this.value = queryParameter(type, nameWithExt)
+        }
+        parameter.ext to parameter
+    }.toMap()
+    return map
+}
+
+/**
  * This extension function for `RoutingCall` provides an overload of `queryParameterExt`
  * that allows querying parameters by their `name` and optional `ext` without specifying a `KClass` type.
  *

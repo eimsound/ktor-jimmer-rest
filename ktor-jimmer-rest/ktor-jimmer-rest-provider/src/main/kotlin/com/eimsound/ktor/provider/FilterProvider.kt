@@ -61,10 +61,11 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
     }
 
     /**
-     * 关联过滤入口：`where(table.store) { ... }`（引用关联，表对象）或
+     * 关联过滤入口：`where(table.store) { ... }`（引用关联，表对象）。
+     * 底层使用 Jimmer 隐式子查询（EXISTS 语义）。
      *
-     * @param TRelated 关联实体类型。
-     * @param prop 关联表对象（如 `table.store`）或集合关联入口。
+     * @param TRelated 关联实体类型（从表对象推断）。
+     * @param prop 关联表对象（如 `table.store`）。
      * @param block 子表过滤块，receiver 为 [AssociationFilterScope]，可使用全部 filter 操作符。
      */
     fun <TRelated : Any> where(
@@ -72,23 +73,29 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
         block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ) {
         val requestCall = call
+        val rootTable = table
         val propName = ParameterNames.associationNameOf(prop)
         where(table.exists<TRelated>(propName) {
-            block(AssociationFilterScope(this, requestCall, propName))
+            block(AssociationFilterScope(this, requestCall, rootTable, propName))
         })
     }
 
     /**
      * 集合关联过滤入口：`where(Book::authors) { ... }`。
      * 底层使用 Jimmer 隐式子查询（EXISTS 语义）。
+     *
+     * @param TRelated 关联实体类型（从属性引用推断）。
+     * @param prop 集合关联属性引用（如 `Book::authors`）。
+     * @param block 子表过滤块，receiver 为 [AssociationFilterScope]，可使用全部 filter 操作符。
      */
     fun <TRelated : Any> where(
         prop: KProperty1<T, List<TRelated>>,
         block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ) {
         val requestCall = call
+        val rootTable = table
         where(table.exists<TRelated>(prop.name) {
-            block(AssociationFilterScope(this, requestCall, prop.name))
+            block(AssociationFilterScope(this, requestCall, rootTable, prop.name))
         })
     }
 }
@@ -115,15 +122,18 @@ interface FilterQueryScope<T : Any> {
 }
 
 /**
- * 关联子表过滤作用域：`where(Book::authors) { ... }` 块内的 receiver。
+ * 关联子表过滤作用域：`where(Book::authors) { ... }` / `BookStore::books { ... }` 块内的 receiver。
  * 持有子表（table）+ 请求上下文（call）+ 关联参数名前缀（如 `authors`）。
- * 块内通过子表属性引用（`table::firstName`）配合 `ilike?` 等操作符使用，
- * 参数名由前缀 + 属性名自动解析（如 `authors_firstName`），不依赖运行时 receiver 绑定。
+ * 块内通过属性表达式（`table.firstName`）配合 `ilike?` 等操作符使用，
+ * 参数名由前缀 + 属性名自动解析（如 `authors_firstName`）。
  */
 @FilterDslMarker
 class AssociationFilterScope<T : Any>(
     override val table: KNonNullTable<T>,
     override val call: RoutingCall,
+    /** 查询根表（用于参数名冲突检查），嵌套时保持不变。 */
+    @PublishedApi
+    internal val rootTable: KNonNullTable<*>,
     @PublishedApi
     internal val prefix: String,
 ) : FilterQueryScope<T> {
@@ -152,35 +162,39 @@ class AssociationFilterScope<T : Any>(
         val nestedPrefix = prefix + Configuration.router.subParameterSeparator + propName
         val requestCall = call
         return table.exists<TRelated>(propName) {
-            block(AssociationFilterScope(this, requestCall, nestedPrefix))
+            block(AssociationFilterScope(this, requestCall, rootTable, nestedPrefix))
         }
     }
 
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
-            value = prefix + Configuration.router.subParameterSeparator + property.name,
-            segments = listOf(prefix),
+            value = joinPrefix(property.name),
+            segments = prefixSegments(),
             propertyName = property.name,
         )
-        ParameterNames.ensureNoRootCollision(table, resolved)
+        ParameterNames.ensureNoRootCollision(rootTable, resolved)
         return resolved
     }
 
     override fun resolved(expression: KPropExpression<*>): ResolvedName {
+        // resolveExpression 返回表达式相对"当前子表"的路径（如 table.name → name）。
+        // 依赖 Jimmer 子查询表不携带 joinProp（当前版本已验证）；
+        // 若未来 Jimmer 行为变化（子查询表带上 joinProp），此处会重复前缀，需重新验证。
         val relative = ParameterNames.resolveExpression(expression)
-        val value = if (prefix.isEmpty()) {
-            relative.value
-        } else {
-            prefix + Configuration.router.subParameterSeparator + relative.value
-        }
         val resolved = ResolvedName(
-            value = value,
-            segments = listOf(prefix) + relative.segments,
+            value = joinPrefix(relative.value),
+            segments = prefixSegments() + relative.segments,
             propertyName = relative.propertyName,
         )
-        ParameterNames.ensureNoRootCollision(table, resolved)
+        ParameterNames.ensureNoRootCollision(rootTable, resolved)
         return resolved
     }
+
+    private fun joinPrefix(value: String): String =
+        if (prefix.isEmpty()) value else prefix + Configuration.router.subParameterSeparator + value
+
+    private fun prefixSegments(): List<String> =
+        if (prefix.isEmpty()) emptyList() else listOf(prefix)
 }
 
 /**

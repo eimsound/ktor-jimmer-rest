@@ -58,6 +58,9 @@ object ParameterNames {
      * 从关联表对象提取最近一层关联名（如 `table.store` → `store`）。
      * 用于 `where(table.store)` 这类以表对象为入口的关联过滤。
      *
+     * 注意：依赖 Jimmer 内部接口 `KTableImplementor`/`TableImplementor.joinProp`，
+     * 属于实现细节；若 Jimmer 升级改变表结构，此逻辑需重新验证。
+     *
      * @throws IllegalArgumentException 表对象不是关联表（根表）或无法解析。
      */
     fun associationNameOf(table: Any): String {
@@ -76,6 +79,10 @@ object ParameterNames {
         val segments = mutableListOf<String>()
         var current: org.babyfish.jimmer.sql.ast.impl.table.TableImplementor<*>? =
             table as? org.babyfish.jimmer.sql.ast.impl.table.TableImplementor<*>
+            ?: throw IllegalArgumentException(
+                "无法从表对象解析关联路径：$table 不是 Jimmer 标准查询表。" +
+                    "表达式必须来自查询/子查询上下文（如 table.name / table.store.name）。"
+            )
         while (current != null) {
             val joinProp = current.joinProp ?: break
             segments.add(joinProp.name)

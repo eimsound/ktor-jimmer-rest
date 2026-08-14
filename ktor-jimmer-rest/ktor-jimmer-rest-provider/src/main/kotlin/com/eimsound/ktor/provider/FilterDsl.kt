@@ -4,210 +4,188 @@ import com.eimsound.util.ktor.default
 import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.queryParameterValues
-import com.eimsound.util.ktor.queryParameterExt
-import com.eimsound.util.ktor.ParameterNames
+import com.eimsound.util.ktor.queryParameterExtMap
+import com.eimsound.util.ktor.queryParameterExtValue
+import com.eimsound.util.ktor.ResolvedName
 import io.ktor.http.parsing.ParseException
 import org.babyfish.jimmer.sql.ast.LikeMode
 import org.babyfish.jimmer.sql.kt.ast.expression.*
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 /**
  * 相等匹配。参数解析规则（确定性，与参数顺序无关）：
  * 优先无后缀参数（`?name=x`），其次 `__exact`（`?name__exact=x`），其他 ext 忽略。
  */
-inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameters = call.queryParameterExt<P>(P::class, resolved.value)
+@PublishedApi
+internal fun <P : Any> FilterQueryScope<*>.eqCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
+): KNonNullExpression<Boolean>? {
+    val parameters = call.queryParameterExtMap(type, resolved.value)
     val value = parameters[null]?.value ?: parameters["exact"]?.value
-    return param.call().`eq?`(value)
+    return expr.`eq?`(value)
 }
 
-/**
- * 相等匹配的表达式形式：`eq?(table.name)`。
- */
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: KProperty<KExpression<P>>)
+    : KNonNullExpression<Boolean>? = eqCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameters = call.queryParameterExt<P>(P::class, resolved.value)
-    val value = parameters[null]?.value ?: parameters["exact"]?.value
-    return param.`eq?`(value)
-}
+    : KNonNullExpression<Boolean>? = eqCore(P::class, resolved(param), param)
 
 /**
  * 不相等匹配，读无后缀参数（`?name=x`）。
  * 注意：与 [eq?] 使用同一参数名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(P::class, resolved.value)
-    return param.call().`ne?`(value)
+@PublishedApi
+internal fun <P : Any> FilterQueryScope<*>.notEqCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
+): KNonNullExpression<Boolean>? {
+    val value = call.queryParameter(type, resolved.value)
+    return expr.`ne?`(value)
 }
 
-/**
- * 不相等匹配的表达式形式：`notEq?(table.name)`。
- */
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param: KProperty<KExpression<P>>)
+    : KNonNullExpression<Boolean>? = notEqCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(P::class, resolved.value)
-    return param.`ne?`(value)
-}
+    : KNonNullExpression<Boolean>? = notEqCore(P::class, resolved(param), param)
 
 /**
  * 包含匹配，支持逗号分隔（`?id=1,2`）或重复参数（`?id=1&id=2`）；无值时不产生谓词。
  */
-inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val values = call.queryParameterValues<P>(P::class, resolved.value)
-    return if (values.isEmpty()) {
-        null
-    } else {
-        param.call().valueIn(values)
-    }
+@PublishedApi
+internal fun <P : Any> FilterQueryScope<*>.inCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
+): KNonNullExpression<Boolean>? {
+    val values = call.queryParameterValues(type, resolved.value)
+    return if (values.isEmpty()) null else expr.valueIn(values)
 }
 
-/**
- * 包含匹配的表达式形式：`in?(table.id)`。
- */
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: KProperty<KExpression<P>>)
+    : KNonNullExpression<Boolean>? = inCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val values = call.queryParameterValues<P>(P::class, resolved.value)
-    return if (values.isEmpty()) {
-        null
-    } else {
-        param.valueIn(values)
-    }
-}
+    : KNonNullExpression<Boolean>? = inCore(P::class, resolved(param), param)
 
 /**
  * 不包含匹配，取值方式同 [in?]；无值时不产生谓词。
  */
-inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val values = call.queryParameterValues<P>(P::class, resolved.value)
-    return if (values.isEmpty()) {
-        null
-    } else {
-        param.call().valueNotIn(values)
-    }
+@PublishedApi
+internal fun <P : Any> FilterQueryScope<*>.notInCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
+): KNonNullExpression<Boolean>? {
+    val values = call.queryParameterValues(type, resolved.value)
+    return if (values.isEmpty()) null else expr.valueNotIn(values)
 }
 
-/**
- * 不包含匹配的表达式形式：`notIn?(table.id)`。
- */
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param: KProperty<KExpression<P>>)
+    : KNonNullExpression<Boolean>? = notInCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val values = call.queryParameterValues<P>(P::class, resolved.value)
-    return if (values.isEmpty()) {
-        null
-    } else {
-        param.valueNotIn(values)
-    }
-}
+    : KNonNullExpression<Boolean>? = notInCore(P::class, resolved(param), param)
 
 /**
  * 小于，读 `{name}__lt`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?`(
-    param: KProperty<KExpression<P>>,
+@PublishedApi
+internal fun <P : Comparable<*>> FilterQueryScope<*>.ltCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "lt")
-    return param.call().`lt?`(value)
+    val value = call.queryParameterExtMap(type, resolved.value)["lt"]?.value
+    return expr.`lt?`(value)
 }
 
-/**
- * 小于的表达式形式：`lt?(table.price)`。
- */
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?`(
+    param: KProperty<KExpression<P>>,
+): KNonNullExpression<Boolean>? = ltCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?`(
     param: KPropExpression<P>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "lt")
-    return param.`lt?`(value)
-}
+): KNonNullExpression<Boolean>? = ltCore(P::class, resolved(param), param)
 
 /**
  * 大于，读 `{name}__gt`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?`(
-    param: KProperty<KExpression<P>>,
+@PublishedApi
+internal fun <P : Comparable<*>> FilterQueryScope<*>.gtCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "gt")
-    return param.call().`gt?`(value)
+    val value = call.queryParameterExtMap(type, resolved.value)["gt"]?.value
+    return expr.`gt?`(value)
 }
 
-/**
- * 大于的表达式形式：`gt?(table.price)`。
- */
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?`(
+    param: KProperty<KExpression<P>>,
+): KNonNullExpression<Boolean>? = gtCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?`(
     param: KPropExpression<P>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "gt")
-    return param.`gt?`(value)
-}
+): KNonNullExpression<Boolean>? = gtCore(P::class, resolved(param), param)
 
 /**
  * 小于等于，读 `{name}__le`。注意：与 [between?] 的 `__le` 参数同名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?`(
-    param: KProperty<KExpression<P>>,
+@PublishedApi
+internal fun <P : Comparable<*>> FilterQueryScope<*>.leCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "le")
-    return param.call().`le?`(value)
+    val value = call.queryParameterExtMap(type, resolved.value)["le"]?.value
+    return expr.`le?`(value)
 }
 
-/**
- * 小于等于的表达式形式：`le?(table.price)`。
- */
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?`(
+    param: KProperty<KExpression<P>>,
+): KNonNullExpression<Boolean>? = leCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?`(
     param: KPropExpression<P>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "le")
-    return param.`le?`(value)
-}
+): KNonNullExpression<Boolean>? = leCore(P::class, resolved(param), param)
 
 /**
  * 大于等于，读 `{name}__ge`。注意：与 [between?] 的 `__ge` 参数同名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?`(
-    param: KProperty<KExpression<P>>,
+@PublishedApi
+internal fun <P : Comparable<*>> FilterQueryScope<*>.geCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "ge")
-    return param.call().`ge?`(value)
+    val value = call.queryParameterExtMap(type, resolved.value)["ge"]?.value
+    return expr.`ge?`(value)
 }
 
-/**
- * 大于等于的表达式形式：`ge?(table.price)`。
- */
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?`(
+    param: KProperty<KExpression<P>>,
+): KNonNullExpression<Boolean>? = geCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?`(
     param: KPropExpression<P>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val value = call.queryParameter<P>(resolved.value, "ge")
-    return param.`ge?`(value)
-}
+): KNonNullExpression<Boolean>? = geCore(P::class, resolved(param), param)
 
 /**
  * 模糊匹配。参数 `{name}` 支持 ext 后缀：
  * `__anywhere`（默认）/ `__exact` / `__start` / `__end`。
  */
-inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
-    param: KProperty<KExpression<String>>,
+@PublishedApi
+internal fun FilterQueryScope<*>.ilikeCore(
+    resolved: ResolvedName,
+    expr: KExpression<String>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameter = call.queryParameterExt<String>(String::class, resolved.value).default()
+    val parameter = call.queryParameterExtMap(String::class, resolved.value).default()
     val likeMode = when (parameter?.ext) {
         "anywhere" -> LikeMode.ANYWHERE
         "exact" -> LikeMode.EXACT
@@ -215,80 +193,55 @@ inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
         "end" -> LikeMode.END
         else -> LikeMode.ANYWHERE
     }
-    return param.call().`ilike?`(parameter?.value, likeMode)
+    return expr.`ilike?`(parameter?.value, likeMode)
 }
 
-/**
- * 模糊匹配的表达式形式：`ilike?(table.name)`，参数名自动解析。
- */
+inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
+    param: KProperty<KExpression<String>>,
+): KNonNullExpression<Boolean>? = ilikeCore(resolved(param), param.call())
+
 inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
     param: KPropExpression<String>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameter = call.queryParameterExt<String>(String::class, resolved.value).default()
-    val likeMode = when (parameter?.ext) {
-        "anywhere" -> LikeMode.ANYWHERE
-        "exact" -> LikeMode.EXACT
-        "start" -> LikeMode.START
-        "end" -> LikeMode.END
-        else -> LikeMode.ANYWHERE
-    }
-    return param.`ilike?`(parameter?.value, likeMode)
-}
+): KNonNullExpression<Boolean>? = ilikeCore(resolved(param), param)
 
 /**
  * 区间匹配，读 `{name}__ge` / `{name}__le`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`between?`(
-    param: KProperty<KExpression<P>>,
+@PublishedApi
+internal fun <P : Comparable<*>> FilterQueryScope<*>.betweenCore(
+    type: KClass<P>,
+    resolved: ResolvedName,
+    expr: KExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameter = call.queryParameterExt<P>(P::class, resolved.value)
-    return param.call().`between?`(parameter["ge"]?.value, parameter["le"]?.value)
+    val parameter = call.queryParameterExtMap(type, resolved.value)
+    return expr.`between?`(parameter["ge"]?.value, parameter["le"]?.value)
 }
 
-/**
- * 区间匹配的表达式形式：`between?(table.price)`。
- */
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`between?`(
+    param: KProperty<KExpression<P>>,
+): KNonNullExpression<Boolean>? = betweenCore(P::class, resolved(param), param.call())
+
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`between?`(
     param: KPropExpression<P>,
-): KNonNullExpression<Boolean>? {
-    val resolved = resolved(param)
-    val parameter = call.queryParameterExt<P>(P::class, resolved.value)
-    return param.`between?`(parameter["ge"]?.value, parameter["le"]?.value)
-}
+): KNonNullExpression<Boolean>? = betweenCore(P::class, resolved(param), param)
 
 /**
  * 非空谓词（静态，不读参数）。
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.noNull(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    return param.call().isNotNull()
-}
+    : KNonNullExpression<Boolean>? = param.call().isNotNull()
 
-/**
- * 非空谓词的表达式形式：`noNull(table.name)`。
- */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.noNull(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    return param.isNotNull()
-}
+    : KNonNullExpression<Boolean>? = param.isNotNull()
 
 /**
  * 为空谓词（静态，不读参数）。
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.isNull(param: KProperty<KExpression<P>>)
-    : KNonNullExpression<Boolean>? {
-    return param.call().isNull()
-}
+    : KNonNullExpression<Boolean>? = param.call().isNull()
 
-/**
- * 为空谓词的表达式形式：`isNull(table.name)`。
- */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.isNull(param: KPropExpression<P>)
-    : KNonNullExpression<Boolean>? {
-    return param.isNull()
-}
+    : KNonNullExpression<Boolean>? = param.isNull()
 
 /**
  * 动态排序。支持多字段多方向：
