@@ -75,6 +75,7 @@ object TestEnv {
         edition: Int = 1,
         price: BigDecimal = BigDecimal("50"),
         store: BookStore? = null,
+        authors: List<Author> = emptyList(),
     ): Book = sqlClient.save(
         Book {
             this.name = name
@@ -82,6 +83,9 @@ object TestEnv {
             this.price = price
             if (store != null) {
                 this.store = store
+            }
+            if (authors.isNotEmpty()) {
+                this.authors = authors
             }
         },
         SaveMode.INSERT_ONLY,

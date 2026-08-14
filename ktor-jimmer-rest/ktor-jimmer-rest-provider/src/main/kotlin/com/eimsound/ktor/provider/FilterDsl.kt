@@ -2,8 +2,6 @@ package com.eimsound.ktor.provider
 
 import com.eimsound.util.ktor.default
 import com.eimsound.ktor.config.Configuration
-import com.eimsound.util.ktor.ParameterNames
-import com.eimsound.util.ktor.ResolvedName
 import com.eimsound.util.ktor.queryParameter
 import com.eimsound.util.ktor.queryParameterValues
 import com.eimsound.util.ktor.queryParameterExt
@@ -12,20 +10,11 @@ import org.babyfish.jimmer.sql.ast.LikeMode
 import org.babyfish.jimmer.sql.kt.ast.expression.*
 import kotlin.reflect.KProperty
 
-@PublishedApi
-internal fun <T : Any, P : Any> FilterScope<T>.resolved(
-    property: KProperty<KExpression<P>>,
-): ResolvedName {
-    val resolved = ParameterNames.resolveWithPath(property)
-    ParameterNames.ensureNoRootCollision(table, resolved)
-    return resolved
-}
-
 /**
  * 相等匹配。参数解析规则（确定性，与参数顺序无关）：
  * 优先无后缀参数（`?name=x`），其次 `__exact`（`?name__exact=x`），其他 ext 忽略。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.`eq?`(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
     val parameters = call.queryParameterExt<P>(P::class, resolved.value)
@@ -37,7 +26,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.`eq?`(param: KPrope
  * 不相等匹配，读无后缀参数（`?name=x`）。
  * 注意：与 [eq?] 使用同一参数名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.`notEq?`(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
     val value = call.queryParameter<P>(P::class, resolved.value)
@@ -47,7 +36,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.`notEq?`(param: KPr
 /**
  * 包含匹配，支持逗号分隔（`?id=1,2`）或重复参数（`?id=1&id=2`）；无值时不产生谓词。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.`in?`(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
     val values = call.queryParameterValues<P>(P::class, resolved.value)
@@ -61,7 +50,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.`in?`(param: KPrope
 /**
  * 不包含匹配，取值方式同 [in?]；无值时不产生谓词。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.`notIn?`(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
     val values = call.queryParameterValues<P>(P::class, resolved.value)
@@ -75,7 +64,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.`notIn?`(param: KPr
 /**
  * 小于，读 `{name}__lt`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`lt?`(
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -86,7 +75,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`lt?`(
 /**
  * 大于，读 `{name}__gt`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`gt?`(
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -97,7 +86,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`gt?`(
 /**
  * 小于等于，读 `{name}__le`。注意：与 [between?] 的 `__le` 参数同名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`le?`(
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -108,7 +97,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`le?`(
 /**
  * 大于等于，读 `{name}__ge`。注意：与 [between?] 的 `__ge` 参数同名，同一属性不要同时使用。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`ge?`(
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -120,7 +109,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`ge?`(
  * 模糊匹配。参数 `{name}` 支持 ext 后缀：
  * `__anywhere`（默认）/ `__exact` / `__start` / `__end`。
  */
-inline fun <reified T : Any> FilterScope<T>.`ilike?`(
+inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
     param: KProperty<KExpression<String>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -138,7 +127,7 @@ inline fun <reified T : Any> FilterScope<T>.`ilike?`(
 /**
  * 区间匹配，读 `{name}__ge` / `{name}__le`。
  */
-inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`between?`(
+inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`between?`(
     param: KProperty<KExpression<P>>,
 ): KNonNullExpression<Boolean>? {
     val resolved = resolved(param)
@@ -149,7 +138,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterScope<T>.`between?
 /**
  * 非空谓词（静态，不读参数）。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.noNull(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.noNull(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     return param.call().isNotNull()
 }
@@ -157,7 +146,7 @@ inline fun <reified T : Any, reified P : Any> FilterScope<T>.noNull(param: KProp
 /**
  * 为空谓词（静态，不读参数）。
  */
-inline fun <reified T : Any, reified P : Any> FilterScope<T>.isNull(param: KProperty<KExpression<P>>)
+inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.isNull(param: KProperty<KExpression<P>>)
     : KNonNullExpression<Boolean>? {
     return param.call().isNull()
 }

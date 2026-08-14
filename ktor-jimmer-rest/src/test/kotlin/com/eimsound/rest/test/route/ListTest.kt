@@ -3,6 +3,7 @@ package com.eimsound.rest.test.route
 import com.eimsound.rest.test.dto.BookPageDto
 import com.eimsound.rest.test.entity.Book
 import com.eimsound.rest.test.infra.TestEnv
+import com.eimsound.rest.test.infra.authorRoutes
 import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
 import io.ktor.client.call.body
@@ -33,6 +34,36 @@ class ListTest {
         val page = response.body<BookPageDto>()
         assertEquals(1, page.rows.size)
         assertEquals("Learning GraphQL", page.rows[0].name)
+    }
+
+    @Test
+    fun `list filters by joined author firstName`() = testApplication {
+        val client = jimmerRestTestApp { authorRoutes() }
+        val alex = TestEnv.saveAuthor(firstName = "Alex", lastName = "Smith")
+        val bob = TestEnv.saveAuthor(firstName = "Bob", lastName = "Jones")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), authors = listOf(alex))
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), authors = listOf(bob))
+
+        val response = client.get("/book-by-author?authors_firstName__start=Alex")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("GraphQL in Action", page.rows[0].name)
+    }
+
+    @Test
+    fun `list joined filter without param returns all`() = testApplication {
+        val client = jimmerRestTestApp { authorRoutes() }
+        val alex = TestEnv.saveAuthor(firstName = "Alex", lastName = "Smith")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), authors = listOf(alex))
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"))
+
+        val response = client.get("/book-by-author")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(2, page.rows.size)
     }
 
     @Test

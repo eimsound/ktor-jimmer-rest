@@ -2,8 +2,11 @@ package com.eimsound.ktor.provider
 
 import com.eimsound.ktor.provider.Filters.Filter
 import com.eimsound.ktor.provider.Filters.Specification
+import com.eimsound.ktor.config.Configuration
 import com.eimsound.util.jimmer.KSpecificationQuery
 import com.eimsound.util.ktor.specification
+import com.eimsound.util.ktor.ParameterNames
+import com.eimsound.util.ktor.ResolvedName
 import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.sql.ast.query.Order
 import org.babyfish.jimmer.sql.kt.ast.expression.KExpression
@@ -13,6 +16,8 @@ import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
+import kotlin.reflect.KProperty1
 
 
 @DslMarker
@@ -39,8 +44,74 @@ interface FilterProvider<T : Any> {
 }
 
 @FilterDslMarker
-class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, val call: RoutingCall) :
-    KMutableQuery<KNonNullTable<T>> by query
+class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val call: RoutingCall) :
+    KMutableQuery<KNonNullTable<T>> by query, FilterQueryScope<T> {
+    override val table: KNonNullTable<T> = query.table
+
+    override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
+        val resolved = ParameterNames.resolveWithPath(property)
+        ParameterNames.ensureNoRootCollision(table, resolved)
+        return resolved
+    }
+}
+
+/**
+ * filter 操作符（eq?/ilike?/between? 等）的最小依赖契约。
+ * 根表作用域 [FilterScope] 与关联子表作用域 [AssociationFilterScope] 都实现它，
+ * 使操作符在两种上下文下可复用。
+ */
+@FilterDslMarker
+interface FilterQueryScope<T : Any> {
+    val table: KNonNullTable<T>
+    val call: RoutingCall
+
+    /**
+     * 解析属性引用 → 查询参数名，并做根表冲突检查。
+     */
+    fun resolved(property: KProperty<KExpression<*>>): ResolvedName
+}
+
+/**
+ * 关联子表过滤作用域：`join(Book::authors) { ... }` 块内的 receiver。
+ * 持有子表（table）+ 请求上下文（call）+ 关联参数名前缀（如 `authors`）。
+ * 块内通过类级属性引用（`Author::firstName`）配合 `ilike?` 等操作符使用，
+ * 参数名由前缀 + 属性名自动解析（如 `authors_firstName`），不依赖运行时 receiver 绑定。
+ */
+@FilterDslMarker
+class AssociationFilterScope<T : Any>(
+    override val table: KNonNullTable<T>,
+    override val call: RoutingCall,
+    private val prefix: String,
+) : FilterQueryScope<T> {
+    override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
+        val resolved = ResolvedName(
+            value = prefix + Configuration.router.subParameterSeparator + property.name,
+            segments = listOf(prefix),
+            propertyName = property.name,
+        )
+        ParameterNames.ensureNoRootCollision(table, resolved)
+        return resolved
+    }
+}
+
+/**
+ * 关联过滤入口：`where(Book::authors) { `ilike?`(table::firstName) }`。
+ * 底层使用 Jimmer 隐式子查询（EXISTS 语义），与 `table.authors {}` 一致，
+ * 避免显式 JOIN 带来的数据重复与分页失效。
+ *
+ * @param prop 关联属性引用（如 `Book::authors`），编译期类型安全。
+ * @param block 子表过滤块，receiver 为 [AssociationFilterScope]，可使用全部 filter 操作符。
+ */
+inline fun <T : Any, TRelated : Any> FilterScope<T>.where(
+    prop: KProperty1<T, List<TRelated>>,
+    crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+): Unit {
+    where {
+        table.exists<TRelated>(prop.name) {
+            block(AssociationFilterScope(this, this@where.call, prop.name))
+        }
+    }
+}
 
 /**
  * SpecificationScope

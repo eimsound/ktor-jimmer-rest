@@ -102,6 +102,17 @@ fun Route.mappingRoutes(path: String = "/book") {
     }
 }
 
+fun Route.authorRoutes(path: String = "/book-by-author") {
+    api<Book>(path) {
+        filter {
+            where(Book::authors) {
+                `ilike?`(table::firstName)
+            }
+            orderBy(table.id.desc())
+        }
+    }
+}
+
 fun Route.orderRoutes(path: String = "/order-item") {
     api<OrderItem>(path) {
         filter {
