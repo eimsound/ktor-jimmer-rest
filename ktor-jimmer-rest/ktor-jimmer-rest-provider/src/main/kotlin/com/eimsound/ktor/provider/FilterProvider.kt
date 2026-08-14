@@ -18,7 +18,6 @@ import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullProps
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 
@@ -64,9 +63,6 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
 
     /**
      * 关联过滤入口：`where(table.store) { ... }`（引用关联，表对象）或
-     * `where<Author>(table.authors) { ... }`（集合关联）。
-     * 底层使用 Jimmer 隐式子查询（EXISTS 语义），与 `table.authors {}` 一致，
-     * 避免显式 JOIN 带来的数据重复与分页失效。
      *
      * @param TRelated 关联实体类型。
      * @param prop 关联表对象（如 `table.store`）或集合关联入口。
@@ -155,15 +151,6 @@ class AssociationFilterScope<T : Any>(
      */
     inline fun <TRelated : Any> assoc(
         prop: KProperty1<T, List<TRelated>>,
-        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
-    ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
-
-    /**
-     * 嵌套关联过滤的表方法引用形式：`assoc(table::books) { ... }`。
-     * `books` 是 KSP 在表上生成的扩展方法，方法引用自带关联名。
-     */
-    inline fun <TRelated : Any> assoc(
-        prop: KFunction<*>,
         crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
 
