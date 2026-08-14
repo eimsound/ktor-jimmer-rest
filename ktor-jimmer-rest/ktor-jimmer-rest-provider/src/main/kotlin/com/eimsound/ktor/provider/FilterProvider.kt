@@ -131,28 +131,20 @@ class AssociationFilterScope<T : Any>(
     override val table: KNonNullTable<T> = innerTable
 
     /**
-     * 嵌套关联过滤通用入口：`assoc<Book>("books") { ... }`。
-     * 内部通过 Jimmer `KProps.exists` 生成 EXISTS 谓词。
-     */
-    inline fun <TRelated : Any> assoc(
-        propName: String,
-        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
-    ): KNonNullExpression<Boolean>? {
-        val nestedPrefix = prefix + Configuration.router.subParameterSeparator + propName
-        val requestCall = call
-        return table.exists<TRelated>(propName) {
-            block(AssociationFilterScope(this, requestCall, nestedPrefix))
-        }
-    }
-
-    /**
      * 嵌套关联过滤的编译期安全形式：`assoc(BookStore::books) { ... }`。
      * 从实体属性引用提取关联名，写错属性名编译期即失败。
      */
     inline fun <TRelated : Any> assoc(
         prop: KProperty1<T, List<TRelated>>,
         crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
-    ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
+    ): KNonNullExpression<Boolean>? {
+        val propName = prop.name
+        val nestedPrefix = prefix + Configuration.router.subParameterSeparator + propName
+        val requestCall = call
+        return table.exists<TRelated>(propName) {
+            block(AssociationFilterScope(this, requestCall, nestedPrefix))
+        }
+    }
 
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
