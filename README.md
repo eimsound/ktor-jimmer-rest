@@ -265,3 +265,5 @@ book-service / order-service example (PostgreSQL via docker-compose).
 ## License
 
 [Apache License 2.0](./LICENSE)
+
+<!-- docs: trigger pages rebuild -->
