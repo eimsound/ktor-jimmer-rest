@@ -158,6 +158,15 @@ class AssociationFilterScope<T : Any>(
         crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
 
+    /**
+     * 嵌套关联过滤的表方法引用形式：`assoc(table::books) { ... }`。
+     * `books` 是 KSP 在表上生成的扩展方法，方法引用自带关联名。
+     */
+    inline fun <TRelated : Any> assoc(
+        prop: KFunction<*>,
+        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
+
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
             value = prefix + Configuration.router.subParameterSeparator + property.name,

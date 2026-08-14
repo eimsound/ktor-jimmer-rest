@@ -140,7 +140,7 @@ fun Route.nestedStoreRoutes(path: String = "/order-by-store-book") {
     api<OrderItem>(path) {
         filter {
             where(table.store) {
-                assoc(BookStore::books) {
+                assoc<Book>(table::books) {
                     `ilike?`(table.name)
                 }
             }
