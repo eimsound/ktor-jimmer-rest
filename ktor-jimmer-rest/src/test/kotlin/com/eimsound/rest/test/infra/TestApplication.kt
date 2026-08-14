@@ -162,6 +162,21 @@ fun Route.nestedStoreAssocRoutes(path: String = "/order-by-store-book-assoc") {
     }
 }
 
+fun Route.nestedThreeLevelRoutes(path: String = "/order-by-author") {
+    api<OrderItem>(path) {
+        filter {
+            where(table.store) {
+                assoc(BookStore::books) {
+                    assoc(Book::authors) {
+                        `ilike?`(table.firstName)
+                    }
+                }
+            }
+            orderBy(table.id.desc())
+        }
+    }
+}
+
 fun Route.orderRoutes(path: String = "/order-item") {
     api<OrderItem>(path) {
         filter {
