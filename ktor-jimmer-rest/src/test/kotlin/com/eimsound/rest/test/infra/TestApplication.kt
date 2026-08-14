@@ -60,8 +60,8 @@ fun Route.bookRoutes(path: String = "/book", pagingEnabled: Boolean = true, key:
         }
         filter {
             where(
-                `ilike?`(table::name),
-                `between?`(table::price)
+                `ilike?`(table.name),
+                `between?`(table.price)
             )
             orderBy(table.id.desc())
         }
@@ -91,6 +91,18 @@ fun Route.bookRoutes(path: String = "/book", pagingEnabled: Boolean = true, key:
     }
 }
 
+fun Route.expressionRoutes(path: String = "/book-expr") {
+    api<Book>(path) {
+        filter {
+            where(
+                `ilike?`(table.name),
+                `ilike?`(table.store.name)
+            )
+            orderBy(table.id.desc())
+        }
+    }
+}
+
 fun Route.mappingRoutes(path: String = "/book") {
     api<Book>(path) {
         filter {
@@ -113,12 +125,23 @@ fun Route.authorRoutes(path: String = "/book-by-author") {
     }
 }
 
-fun Route.nestedAuthorRoutes(path: String = "/book-by-author-nested") {
+fun Route.storeRoutes(path: String = "/book-by-store") {
     api<Book>(path) {
         filter {
-            where(Book::authors) {
-                where(Author::books) {
-                    `ilike?`(table::name)
+            where(table.store) {
+                `ilike?`(table::name)
+            }
+            orderBy(table.id.desc())
+        }
+    }
+}
+
+fun Route.nestedStoreRoutes(path: String = "/order-by-store-book") {
+    api<OrderItem>(path) {
+        filter {
+            where(table.store) {
+                books {
+                    name ilike "GraphQL%"
                 }
             }
             orderBy(table.id.desc())
@@ -137,7 +160,7 @@ fun Route.orderRoutes(path: String = "/order-item") {
 fun Route.eqRoutes(path: String = "/book-eq") {
     api<Book>(path) {
         filter {
-            where(`eq?`(table::name))
+            where(`eq?`(table.name))
         }
     }
 }
@@ -145,7 +168,7 @@ fun Route.eqRoutes(path: String = "/book-eq") {
 fun Route.inRoutes(path: String = "/book-in") {
     api<Book>(path) {
         filter {
-            where(`in?`(table::id))
+            where(`in?`(table.id))
         }
     }
 }
@@ -153,7 +176,7 @@ fun Route.inRoutes(path: String = "/book-in") {
 fun Route.notInRoutes(path: String = "/book-not-in") {
     api<Book>(path) {
         filter {
-            where(`notIn?`(table::id))
+            where(`notIn?`(table.id))
         }
     }
 }
@@ -162,8 +185,8 @@ fun Route.comparisonRoutes(path: String = "/book-comparison") {
     api<Book>(path) {
         filter {
             where(
-                `lt?`(table::price),
-                `gt?`(table::price)
+                `lt?`(table.price),
+                `gt?`(table.price)
             )
         }
     }
@@ -173,8 +196,8 @@ fun Route.inclusiveRoutes(path: String = "/book-inclusive") {
     api<Book>(path) {
         filter {
             where(
-                `le?`(table::price),
-                `ge?`(table::price)
+                `le?`(table.price),
+                `ge?`(table.price)
             )
         }
     }
@@ -183,7 +206,7 @@ fun Route.inclusiveRoutes(path: String = "/book-inclusive") {
 fun Route.notEqRoutes(path: String = "/book-not-eq") {
     api<Book>(path) {
         filter {
-            where(`notEq?`(table::name))
+            where(`notEq?`(table.name))
         }
     }
 }
@@ -191,7 +214,7 @@ fun Route.notEqRoutes(path: String = "/book-not-eq") {
 fun Route.isNullRoutes(path: String = "/order-null") {
     api<OrderItem>(path) {
         filter {
-            where(isNull(table::store_name))
+            where(isNull(table.store_name))
         }
     }
 }

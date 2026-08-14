@@ -15,9 +15,24 @@ import org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
+import org.babyfish.jimmer.sql.kt.ast.table.KNonNullProps
+import org.babyfish.jimmer.sql.ast.impl.table.TableImplementor
+import org.babyfish.jimmer.sql.kt.ast.table.impl.KTableImplementor
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
+
+/**
+ * 从关联表对象提取关联名（如 `table.store` → `store`）。
+ * Jimmer 表对象的 javaTable 记录关联属性（getJoinProp），根表无关联属性。
+ */
+internal fun KNonNullTable<*>.associationName(): String {
+    val javaTable = (this as? KTableImplementor<*>)?.javaTable
+        ?: throw IllegalArgumentException("无法解析关联名：$this 不是 Jimmer 关联表对象")
+    val prop = javaTable.joinProp
+        ?: throw IllegalArgumentException("无法解析关联名：$this 是根表而非关联表")
+    return prop.name
+}
 
 
 @DslMarker
@@ -53,6 +68,41 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
         ParameterNames.ensureNoRootCollision(table, resolved)
         return resolved
     }
+
+    /**
+     * 关联过滤入口：`where(table.store) { ... }`（引用关联，表对象）或
+     * `where<Author>(table.authors) { ... }`（集合关联）。
+     * 底层使用 Jimmer 隐式子查询（EXISTS 语义），与 `table.authors {}` 一致，
+     * 避免显式 JOIN 带来的数据重复与分页失效。
+     *
+     * @param TRelated 关联实体类型。
+     * @param prop 关联表对象（如 `table.store`）或集合关联入口。
+     * @param block 子表过滤块，receiver 为 [AssociationFilterScope]，可使用全部 filter 操作符。
+     */
+    fun <TRelated : Any> where(
+        prop: KNonNullTable<TRelated>,
+        block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ) {
+        val requestCall = call
+        val propName = prop.associationName()
+        where(table.exists<TRelated>(propName) {
+            block(AssociationFilterScope(this, requestCall, propName))
+        })
+    }
+
+    /**
+     * 集合关联过滤入口：`where(Book::authors) { ... }`。
+     * 底层使用 Jimmer 隐式子查询（EXISTS 语义）。
+     */
+    fun <TRelated : Any> where(
+        prop: KProperty1<T, List<TRelated>>,
+        block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ) {
+        val requestCall = call
+        where(table.exists<TRelated>(prop.name) {
+            block(AssociationFilterScope(this, requestCall, prop.name))
+        })
+    }
 }
 
 /**
@@ -79,11 +129,28 @@ interface FilterQueryScope<T : Any> {
  */
 @FilterDslMarker
 class AssociationFilterScope<T : Any>(
-    override val table: KNonNullTable<T>,
+    innerTable: KNonNullTable<T>,
     override val call: RoutingCall,
     @PublishedApi
     internal val prefix: String,
-) : FilterQueryScope<T> {
+) : KNonNullProps<T> by innerTable, FilterQueryScope<T> {
+    override val table: KNonNullTable<T> = innerTable
+
+    /**
+     * 嵌套关联过滤通用入口：`assoc<Book>("books") { ... }`。
+     * 内部通过 Jimmer `KProps.exists` 生成 EXISTS 谓词。
+     */
+    inline fun <TRelated : Any> assoc(
+        propName: String,
+        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ): KNonNullExpression<Boolean>? {
+        val nestedPrefix = prefix + Configuration.router.subParameterSeparator + propName
+        val requestCall = call
+        return table.exists<TRelated>(propName) {
+            block(AssociationFilterScope(this, requestCall, nestedPrefix))
+        }
+    }
+
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
             value = prefix + Configuration.router.subParameterSeparator + property.name,
@@ -93,38 +160,6 @@ class AssociationFilterScope<T : Any>(
         ParameterNames.ensureNoRootCollision(table, resolved)
         return resolved
     }
-}
-
-/**
- * 关联块内的嵌套关联过滤：`where(Book::authors) { where(Author::books) { ... } }`。
- * 返回 EXISTS 谓词（由外层块作为最后一个表达式返回），参数名前缀累积：
- * `authors` → `authors_books`。
- */
-inline fun <T : Any, TRelated : Any> AssociationFilterScope<T>.where(
-    prop: KProperty1<T, List<TRelated>>,
-    crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
-): KNonNullExpression<Boolean>? {
-    return table.exists<TRelated>(prop.name) {
-        val nestedPrefix = prefix + Configuration.router.subParameterSeparator + prop.name
-        block(AssociationFilterScope(this, this@where.call, nestedPrefix))
-    }
-}
-
-/**
- * 关联过滤入口：`where(Book::authors) { `ilike?`(table::firstName) }`。
- * 底层使用 Jimmer 隐式子查询（EXISTS 语义），与 `table.authors {}` 一致，
- * 避免显式 JOIN 带来的数据重复与分页失效。
- *
- * @param prop 关联属性引用（如 `Book::authors`），编译期类型安全。
- * @param block 子表过滤块，receiver 为 [AssociationFilterScope]，可使用全部 filter 操作符。
- */
-inline fun <T : Any, TRelated : Any> FilterScope<T>.where(
-    prop: KProperty1<T, List<TRelated>>,
-    crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
-): Unit {
-    where(table.exists<TRelated>(prop.name) {
-        block(AssociationFilterScope(this, this@where.call, prop.name))
-    })
 }
 
 /**

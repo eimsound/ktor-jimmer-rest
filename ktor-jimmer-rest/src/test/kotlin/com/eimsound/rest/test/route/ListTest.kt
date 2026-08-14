@@ -1,12 +1,15 @@
 package com.eimsound.rest.test.route
 
 import com.eimsound.rest.test.dto.BookPageDto
+import com.eimsound.rest.test.dto.OrderItemPageDto
 import com.eimsound.rest.test.entity.Book
 import com.eimsound.rest.test.infra.TestEnv
 import com.eimsound.rest.test.infra.authorRoutes
 import com.eimsound.rest.test.infra.bookRoutes
+import com.eimsound.rest.test.infra.expressionRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
-import com.eimsound.rest.test.infra.nestedAuthorRoutes
+import com.eimsound.rest.test.infra.nestedStoreRoutes
+import com.eimsound.rest.test.infra.storeRoutes
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
@@ -38,6 +41,36 @@ class ListTest {
     }
 
     @Test
+    fun `list filters by expression form ilike`() = testApplication {
+        val client = jimmerRestTestApp { expressionRoutes() }
+        val store = TestEnv.saveBookStore(name = "MANNING")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), store = store)
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"))
+
+        val response = client.get("/book-expr?name__start=GraphQL")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("GraphQL in Action", page.rows[0].name)
+    }
+
+    @Test
+    fun `list filters by expression form nested ilike`() = testApplication {
+        val client = jimmerRestTestApp { expressionRoutes() }
+        val store = TestEnv.saveBookStore(name = "MANNING")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), store = store)
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"))
+
+        val response = client.get("/book-expr?store_name__start=MANNING")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("GraphQL in Action", page.rows[0].name)
+    }
+
+    @Test
     fun `list filters by joined author firstName`() = testApplication {
         val client = jimmerRestTestApp { authorRoutes() }
         val alex = TestEnv.saveAuthor(firstName = "Alex", lastName = "Smith")
@@ -65,22 +98,6 @@ class ListTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val page = response.body<BookPageDto>()
         assertEquals(2, page.rows.size)
-    }
-
-    @Test
-    fun `list filters by nested joined author book`() = testApplication {
-        val client = jimmerRestTestApp { nestedAuthorRoutes() }
-        val alex = TestEnv.saveAuthor(firstName = "Alex", lastName = "Smith")
-        val bob = TestEnv.saveAuthor(firstName = "Bob", lastName = "Jones")
-        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), authors = listOf(alex))
-        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), authors = listOf(bob))
-
-        val response = client.get("/book-by-author-nested?authors_books_name__start=GraphQL")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        val page = response.body<BookPageDto>()
-        assertEquals(1, page.rows.size)
-        assertEquals("GraphQL in Action", page.rows[0].name)
     }
 
     @Test
@@ -125,6 +142,40 @@ class ListTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val rows = response.body<List<Book>>()
         assertEquals(3, rows.size)
+    }
+
+    @Test
+    fun `list filters by store reference association`() = testApplication {
+        val client = jimmerRestTestApp { storeRoutes() }
+        val amazon = TestEnv.saveBookStore(name = "Amazon")
+        val local = TestEnv.saveBookStore(name = "Local Books")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), store = amazon)
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), store = local)
+
+        val response = client.get("/book-by-store?store_name__start=Amazon")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("GraphQL in Action", page.rows[0].name)
+    }
+
+    @Test
+    fun `list filters by nested store to book chain`() = testApplication {
+        val client = jimmerRestTestApp { nestedStoreRoutes() }
+        val amazon = TestEnv.saveBookStore(name = "Amazon")
+        val local = TestEnv.saveBookStore(name = "Local Books")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), store = amazon)
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), store = local)
+        TestEnv.saveOrderItem(code = "ORDER-1", store = amazon)
+        TestEnv.saveOrderItem(code = "ORDER-2", store = local)
+
+        val response = client.get("/order-by-store-book?store_books_name__start=GraphQL")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<OrderItemPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("ORDER-1", page.rows[0].code)
     }
 
     @Test

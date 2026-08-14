@@ -7,6 +7,8 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import org.babyfish.jimmer.sql.ast.impl.table.TableTypeProvider
+import org.babyfish.jimmer.sql.ast.table.spi.PropExpressionImplementor
+import org.babyfish.jimmer.sql.kt.ast.expression.KPropExpression
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -36,6 +38,35 @@ object ParameterNames {
         val value = (segments + property.name)
             .joinToString(Configuration.router.subParameterSeparator)
         return ResolvedName(value, segments, property.name)
+    }
+
+    /**
+     * 从属性表达式（如 `table.name` / `table.store.name`）解析查询参数名。
+     * 依赖 Jimmer 表达式实现保留的表引用与属性元数据。
+     */
+    fun resolveExpression(expression: KPropExpression<*>): ResolvedName {
+        val implementor = expression.toPropExpressionImplementor()
+            ?: throw IllegalArgumentException("filter 参数必须是属性表达式（如 table.name），实际是：$expression")
+        val segments = associationSegmentsOf(implementor.table)
+        val propertyName = implementor.prop.name
+        val value = (segments + propertyName)
+            .joinToString(Configuration.router.subParameterSeparator)
+        return ResolvedName(value, segments, propertyName)
+    }
+
+    private fun KPropExpression<*>.toPropExpressionImplementor(): PropExpressionImplementor<*>? =
+        this as? PropExpressionImplementor<*>
+
+    private fun associationSegmentsOf(table: Any): List<String> {
+        val segments = mutableListOf<String>()
+        var current: org.babyfish.jimmer.sql.ast.impl.table.TableImplementor<*>? =
+            table as? org.babyfish.jimmer.sql.ast.impl.table.TableImplementor<*>
+        while (current != null) {
+            val joinProp = current.joinProp ?: break
+            segments.add(joinProp.name)
+            current = current.parent
+        }
+        return segments.reversed()
     }
 
     /**
