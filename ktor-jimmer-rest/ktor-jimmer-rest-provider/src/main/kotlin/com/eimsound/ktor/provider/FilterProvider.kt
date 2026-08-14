@@ -11,12 +11,14 @@ import io.ktor.server.routing.RoutingCall
 import org.babyfish.jimmer.sql.ast.query.Order
 import org.babyfish.jimmer.sql.kt.ast.expression.KExpression
 import org.babyfish.jimmer.sql.kt.ast.expression.KNonNullExpression
+import org.babyfish.jimmer.sql.kt.ast.expression.KPropExpression
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullProps
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
 
@@ -50,6 +52,12 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
 
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ParameterNames.resolveWithPath(property)
+        ParameterNames.ensureNoRootCollision(table, resolved)
+        return resolved
+    }
+
+    override fun resolved(expression: KPropExpression<*>): ResolvedName {
+        val resolved = ParameterNames.resolveExpression(expression)
         ParameterNames.ensureNoRootCollision(table, resolved)
         return resolved
     }
@@ -104,6 +112,11 @@ interface FilterQueryScope<T : Any> {
      * 解析属性引用 → 查询参数名，并做根表冲突检查。
      */
     fun resolved(property: KProperty<KExpression<*>>): ResolvedName
+
+    /**
+     * 解析属性表达式 → 查询参数名，并做根表冲突检查。
+     */
+    fun resolved(expression: KPropExpression<*>): ResolvedName
 }
 
 /**
@@ -136,11 +149,36 @@ class AssociationFilterScope<T : Any>(
         }
     }
 
+    /**
+     * 嵌套关联过滤的编译期安全形式：`assoc(BookStore::books) { ... }`。
+     * 从实体属性引用提取关联名，写错属性名编译期即失败。
+     */
+    inline fun <TRelated : Any> assoc(
+        prop: KProperty1<T, List<TRelated>>,
+        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ): KNonNullExpression<Boolean>? = assoc<TRelated>(prop.name, block)
+
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
             value = prefix + Configuration.router.subParameterSeparator + property.name,
             segments = listOf(prefix),
             propertyName = property.name,
+        )
+        ParameterNames.ensureNoRootCollision(table, resolved)
+        return resolved
+    }
+
+    override fun resolved(expression: KPropExpression<*>): ResolvedName {
+        val relative = ParameterNames.resolveExpression(expression)
+        val value = if (prefix.isEmpty()) {
+            relative.value
+        } else {
+            prefix + Configuration.router.subParameterSeparator + relative.value
+        }
+        val resolved = ResolvedName(
+            value = value,
+            segments = listOf(prefix) + relative.segments,
+            propertyName = relative.propertyName,
         )
         ParameterNames.ensureNoRootCollision(table, resolved)
         return resolved

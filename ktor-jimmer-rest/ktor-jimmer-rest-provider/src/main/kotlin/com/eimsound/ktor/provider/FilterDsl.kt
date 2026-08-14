@@ -28,8 +28,7 @@ inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: K
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`eq?`(param: KPropExpression<P>)
     : KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val parameters = call.queryParameterExt<P>(P::class, resolved.value)
     val value = parameters[null]?.value ?: parameters["exact"]?.value
     return param.`eq?`(value)
@@ -51,8 +50,7 @@ inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notEq?`(param: KPropExpression<P>)
     : KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val value = call.queryParameter<P>(P::class, resolved.value)
     return param.`ne?`(value)
 }
@@ -76,8 +74,7 @@ inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: K
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`in?`(param: KPropExpression<P>)
     : KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val values = call.queryParameterValues<P>(P::class, resolved.value)
     return if (values.isEmpty()) {
         null
@@ -105,8 +102,7 @@ inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param
  */
 inline fun <reified T : Any, reified P : Any> FilterQueryScope<T>.`notIn?`(param: KPropExpression<P>)
     : KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val values = call.queryParameterValues<P>(P::class, resolved.value)
     return if (values.isEmpty()) {
         null
@@ -132,8 +128,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`lt?`(
     param: KPropExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val value = call.queryParameter<P>(resolved.value, "lt")
     return param.`lt?`(value)
 }
@@ -155,8 +150,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`gt?`(
     param: KPropExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val value = call.queryParameter<P>(resolved.value, "gt")
     return param.`gt?`(value)
 }
@@ -178,8 +172,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`le?`(
     param: KPropExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val value = call.queryParameter<P>(resolved.value, "le")
     return param.`le?`(value)
 }
@@ -201,8 +194,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`ge?`(
     param: KPropExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val value = call.queryParameter<P>(resolved.value, "ge")
     return param.`ge?`(value)
 }
@@ -232,8 +224,7 @@ inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
 inline fun <reified T : Any> FilterQueryScope<T>.`ilike?`(
     param: KPropExpression<String>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val parameter = call.queryParameterExt<String>(String::class, resolved.value).default()
     val likeMode = when (parameter?.ext) {
         "anywhere" -> LikeMode.ANYWHERE
@@ -262,8 +253,7 @@ inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`bet
 inline fun <reified T : Any, reified P : Comparable<*>> FilterQueryScope<T>.`between?`(
     param: KPropExpression<P>,
 ): KNonNullExpression<Boolean>? {
-    val resolved = ParameterNames.resolveExpression(param)
-    ParameterNames.ensureNoRootCollision(table, resolved)
+    val resolved = resolved(param)
     val parameter = call.queryParameterExt<P>(P::class, resolved.value)
     return param.`between?`(parameter["ge"]?.value, parameter["le"]?.value)
 }
