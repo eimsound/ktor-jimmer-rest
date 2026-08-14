@@ -101,7 +101,7 @@ install(JimmerRest) {
 ## Usage
 
 `api<T>` registers all routes for the entity. For detailed usage, refer to
-the [documentation](https://ktor-jimmer-rest.eimsound.github.com).
+the [documentation](https://eimsound.github.io/ktor-jimmer-rest/).
 
 ```kotlin
 api<Book>("/book") {
@@ -259,8 +259,8 @@ book-service / order-service example (PostgreSQL via docker-compose).
 
 ## Documentation
 
-- [简体中文文档](https://ktor-jimmer-rest.eimsound.github.com/)
-- [English Docs](https://ktor-jimmer-rest.eimsound.github.com/en/)
+- [简体中文文档](https://eimsound.github.io/ktor-jimmer-rest/)
+- [English Docs](https://eimsound.github.io/ktor-jimmer-rest/en/)
 
 ## License
 
