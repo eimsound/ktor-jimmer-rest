@@ -109,10 +109,23 @@ api<Book>("/book") {
     // filter(BookSpec::class)
     filter {
         where(
-            `ilike?`(table::name),          // ?name__start=GraphQL
-            `in?`(table::edition),          // ?edition=1,2
-            `between?`(table::price)        // ?price__ge=50&price__le=80
+            `ilike?`(table.name),           // ?name__start=GraphQL
+            `in?`(table.edition),           // ?edition=1,2
+            `between?`(table.price)         // ?price__ge=50&price__le=80
         )
+        // association filtering (EXISTS semantics, pagination-safe)
+        where(table.store) {                // reference association
+            `ilike?`(table.name)            // ?store_name__start=Amazon
+        }
+        where(Book::authors) {              // collection association
+            `ilike?`(table.firstName)       // ?authors_firstName__start=Alex
+        }
+        // nested association (prefix accumulates: store → store_books)
+        where(table.store) {
+            BookStore::books {
+                `ilike?`(table.name)        // ?store_books_name__start=GraphQL
+            }
+        }
         sort()                              // ?sort=price,desc
         orderBy(table.id.desc())
     }
@@ -208,7 +221,7 @@ Filter predicates are bound to request parameters automatically:
 | `ilike?` | `{name}` + optional `__anywhere \| __exact \| __start \| __end` | `?name__start=GraphQL` |
 | `between?` | `{name}__ge`, `{name}__le` | `?price__ge=50&price__le=80` |
 | `isNull` / `noNull` | static predicates | — |
-| nested table | sub-fields joined by `_` | `?store_name=O'REILLY` |
+| association (EXISTS) | association path joined by `_` | `?store_books_name=GraphQL` |
 | `sort()` | `sort=字段,asc\|desc` (repeatable) | `?sort=price,desc&sort=id,asc` |
 
 List endpoints accept `pageIndex` and `pageSize` (defaults: `0` and `10`, configurable via `pager`).

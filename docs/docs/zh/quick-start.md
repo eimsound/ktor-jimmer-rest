@@ -80,10 +80,17 @@ routing {
         // 过滤：查询参数会自动映射到 where 条件
         filter {
             where(
-                `ilike?`(table::name),
-                `in?`(table::edition),
-                `between?`(table::price)
+                `ilike?`(table.name),
+                `in?`(table.edition),
+                `between?`(table.price)
             )
+            // 关联过滤（EXISTS 语义，分页安全）
+            where(table.store) {           // 引用关联
+                `ilike?`(table.name)       // ?store_name__start=Amazon
+            }
+            where(Book::authors) {         // 集合关联
+                `ilike?`(table.firstName)  // ?authors_firstName__start=Alex
+            }
             sort()
             orderBy(table.id.desc())
         }
@@ -219,7 +226,7 @@ filter 中的扩展函数会自动把查询参数映射为条件：
 | `ilike?` | `{字段名}` + `__anywhere` / `__exact` / `__start` / `__end` | `?name__start=GraphQL` |
 | `between?` | `{字段名}__ge`、`{字段名}__le` | `?price__ge=50&price__le=80` |
 | `isNull` / `noNull` | 静态谓词 | — |
-| 关联表字段 | 子表名与字段名用 `_` 连接 | `?store_name=O'REILLY` |
+| 关联过滤（EXISTS） | 关联路径用 `_` 连接 | `?store_books_name=GraphQL` |
 | `sort()` | `sort=字段,asc\|desc`（可重复） | `?sort=price,desc&sort=id,asc` |
 
 参数分隔符可以通过 `router` 配置修改：

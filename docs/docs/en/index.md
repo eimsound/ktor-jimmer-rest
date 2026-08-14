@@ -44,9 +44,12 @@ routing {
     api<Book>("/book") {
         filter {
             where(
-                `ilike?`(table::name),
-                `between?`(table::price)
+                `ilike?`(table.name),
+                `between?`(table.price)
             )
+            where(Book::authors) {         // association filtering (EXISTS)
+                `ilike?`(table.firstName)
+            }
             orderBy(table.id.desc())
         }
         fetcher {

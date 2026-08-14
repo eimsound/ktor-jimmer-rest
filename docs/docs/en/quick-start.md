@@ -81,10 +81,17 @@ routing {
         // Filtering: query parameters map to where conditions automatically
         filter {
             where(
-                `ilike?`(table::name),
-                `in?`(table::edition),
-                `between?`(table::price)
+                `ilike?`(table.name),
+                `in?`(table.edition),
+                `between?`(table.price)
             )
+            // association filtering (EXISTS semantics, pagination-safe)
+            where(table.store) {           // reference association
+                `ilike?`(table.name)       // ?store_name__start=Amazon
+            }
+            where(Book::authors) {         // collection association
+                `ilike?`(table.firstName)  // ?authors_firstName__start=Alex
+            }
             sort()
             orderBy(table.id.desc())
         }
@@ -205,7 +212,7 @@ Extension functions inside `filter` bind request parameters to predicates:
 | `ilike?` | `{field}` + `__anywhere` / `__exact` / `__start` / `__end` | `?name__start=GraphQL` |
 | `between?` | `{field}__ge`, `{field}__le` | `?price__ge=50&price__le=80` |
 | `isNull` / `noNull` | static predicates | — |
-| Association fields | child table and field joined with `_` | `?store_name=O'REILLY` |
+| Association (EXISTS) | association path joined with `_` | `?store_books_name=GraphQL` |
 | `sort()` | `sort=field,asc\|desc` (repeatable) | `?sort=price,desc&sort=id,asc` |
 
 Separators are configurable via `router`:
