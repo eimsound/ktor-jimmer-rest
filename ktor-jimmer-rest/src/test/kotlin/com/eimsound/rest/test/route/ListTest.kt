@@ -6,6 +6,7 @@ import com.eimsound.rest.test.infra.TestEnv
 import com.eimsound.rest.test.infra.authorRoutes
 import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
+import com.eimsound.rest.test.infra.nestedAuthorRoutes
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
@@ -64,6 +65,22 @@ class ListTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val page = response.body<BookPageDto>()
         assertEquals(2, page.rows.size)
+    }
+
+    @Test
+    fun `list filters by nested joined author book`() = testApplication {
+        val client = jimmerRestTestApp { nestedAuthorRoutes() }
+        val alex = TestEnv.saveAuthor(firstName = "Alex", lastName = "Smith")
+        val bob = TestEnv.saveAuthor(firstName = "Bob", lastName = "Jones")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), authors = listOf(alex))
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), authors = listOf(bob))
+
+        val response = client.get("/book-by-author-nested?authors_books_name__start=GraphQL")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<BookPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("GraphQL in Action", page.rows[0].name)
     }
 
     @Test

@@ -113,6 +113,19 @@ fun Route.authorRoutes(path: String = "/book-by-author") {
     }
 }
 
+fun Route.nestedAuthorRoutes(path: String = "/book-by-author-nested") {
+    api<Book>(path) {
+        filter {
+            where(Book::authors) {
+                where(Author::books) {
+                    `ilike?`(table::name)
+                }
+            }
+            orderBy(table.id.desc())
+        }
+    }
+}
+
 fun Route.orderRoutes(path: String = "/order-item") {
     api<OrderItem>(path) {
         filter {

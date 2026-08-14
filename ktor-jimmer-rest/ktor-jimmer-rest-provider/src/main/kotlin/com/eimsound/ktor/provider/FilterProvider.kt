@@ -81,7 +81,8 @@ interface FilterQueryScope<T : Any> {
 class AssociationFilterScope<T : Any>(
     override val table: KNonNullTable<T>,
     override val call: RoutingCall,
-    private val prefix: String,
+    @PublishedApi
+    internal val prefix: String,
 ) : FilterQueryScope<T> {
     override fun resolved(property: KProperty<KExpression<*>>): ResolvedName {
         val resolved = ResolvedName(
@@ -91,6 +92,21 @@ class AssociationFilterScope<T : Any>(
         )
         ParameterNames.ensureNoRootCollision(table, resolved)
         return resolved
+    }
+}
+
+/**
+ * 关联块内的嵌套关联过滤：`where(Book::authors) { where(Author::books) { ... } }`。
+ * 返回 EXISTS 谓词（由外层块作为最后一个表达式返回），参数名前缀累积：
+ * `authors` → `authors_books`。
+ */
+inline fun <T : Any, TRelated : Any> AssociationFilterScope<T>.where(
+    prop: KProperty1<T, List<TRelated>>,
+    crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+): KNonNullExpression<Boolean>? {
+    return table.exists<TRelated>(prop.name) {
+        val nestedPrefix = prefix + Configuration.router.subParameterSeparator + prop.name
+        block(AssociationFilterScope(this, this@where.call, nestedPrefix))
     }
 }
 
