@@ -54,6 +54,21 @@ object ParameterNames {
         return ResolvedName(value, segments, propertyName)
     }
 
+    /**
+     * 从关联表对象提取最近一层关联名（如 `table.store` → `store`）。
+     * 用于 `where(table.store)` 这类以表对象为入口的关联过滤。
+     *
+     * @throws IllegalArgumentException 表对象不是关联表（根表）或无法解析。
+     */
+    fun associationNameOf(table: Any): String {
+        val javaTable = (table as? org.babyfish.jimmer.sql.kt.ast.table.impl.KTableImplementor<*>)
+            ?.javaTable
+            ?: throw IllegalArgumentException("无法解析关联名：$table 不是 Jimmer 关联表对象")
+        val segments = associationSegmentsOf(javaTable)
+        return segments.lastOrNull()
+            ?: throw IllegalArgumentException("无法解析关联名：$table 是根表而非关联表")
+    }
+
     private fun KPropExpression<*>.toPropExpressionImplementor(): PropExpressionImplementor<*>? =
         this as? PropExpressionImplementor<*>
 

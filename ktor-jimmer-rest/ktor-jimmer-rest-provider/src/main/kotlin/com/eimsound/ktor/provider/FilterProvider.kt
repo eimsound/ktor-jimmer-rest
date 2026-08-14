@@ -16,24 +16,9 @@ import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullProps
-import org.babyfish.jimmer.sql.ast.impl.table.TableImplementor
-import org.babyfish.jimmer.sql.kt.ast.table.impl.KTableImplementor
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
-
-/**
- * 从关联表对象提取关联名（如 `table.store` → `store`）。
- * Jimmer 表对象的 javaTable 记录关联属性（getJoinProp），根表无关联属性。
- */
-internal fun KNonNullTable<*>.associationName(): String {
-    val javaTable = (this as? KTableImplementor<*>)?.javaTable
-        ?: throw IllegalArgumentException("无法解析关联名：$this 不是 Jimmer 关联表对象")
-    val prop = javaTable.joinProp
-        ?: throw IllegalArgumentException("无法解析关联名：$this 是根表而非关联表")
-    return prop.name
-}
-
 
 @DslMarker
 annotation class FilterDslMarker
@@ -84,7 +69,7 @@ class FilterScope<T : Any>(query: KMutableQuery<KNonNullTable<T>>, override val 
         block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ) {
         val requestCall = call
-        val propName = prop.associationName()
+        val propName = ParameterNames.associationNameOf(prop)
         where(table.exists<TRelated>(propName) {
             block(AssociationFilterScope(this, requestCall, propName))
         })
