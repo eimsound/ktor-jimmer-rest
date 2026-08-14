@@ -131,14 +131,27 @@ class AssociationFilterScope<T : Any>(
     override val table: KNonNullTable<T> = innerTable
 
     /**
-     * 嵌套关联过滤的编译期安全形式：`assoc(BookStore::books) { ... }`。
+     * 嵌套关联过滤：`assoc(BookStore::books) { ... }`。
      * 从实体属性引用提取关联名，写错属性名编译期即失败。
      */
     inline fun <TRelated : Any> assoc(
         prop: KProperty1<T, List<TRelated>>,
         crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ): KNonNullExpression<Boolean>? = prop.nestedFilter(block)
+
+    /**
+     * 嵌套关联过滤：`BookStore::books { ... }`。
+     * 属性引用直接调用（invoke 操作符），写错属性名编译期即失败。
+     */
+    inline operator fun <TRelated : Any> KProperty1<T, List<TRelated>>.invoke(
+        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
+    ): KNonNullExpression<Boolean>? = nestedFilter(block)
+
+    @PublishedApi
+    internal inline fun <TRelated : Any> KProperty1<T, List<TRelated>>.nestedFilter(
+        crossinline block: AssociationFilterScope<TRelated>.() -> KNonNullExpression<Boolean>?,
     ): KNonNullExpression<Boolean>? {
-        val propName = prop.name
+        val propName = name
         val nestedPrefix = prefix + Configuration.router.subParameterSeparator + propName
         val requestCall = call
         return table.exists<TRelated>(propName) {

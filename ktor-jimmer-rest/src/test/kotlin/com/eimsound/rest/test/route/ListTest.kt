@@ -9,6 +9,7 @@ import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.expressionRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
 import com.eimsound.rest.test.infra.nestedStoreRoutes
+import com.eimsound.rest.test.infra.nestedStoreAssocRoutes
 import com.eimsound.rest.test.infra.storeRoutes
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -171,6 +172,24 @@ class ListTest {
         TestEnv.saveOrderItem(code = "ORDER-2", store = local)
 
         val response = client.get("/order-by-store-book?store_books_name__start=GraphQL")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val page = response.body<OrderItemPageDto>()
+        assertEquals(1, page.rows.size)
+        assertEquals("ORDER-1", page.rows[0].code)
+    }
+
+    @Test
+    fun `list filters by nested store to book chain via assoc`() = testApplication {
+        val client = jimmerRestTestApp { nestedStoreAssocRoutes() }
+        val amazon = TestEnv.saveBookStore(name = "Amazon")
+        val local = TestEnv.saveBookStore(name = "Local Books")
+        TestEnv.saveBook(name = "GraphQL in Action", edition = 1, price = BigDecimal("50"), store = amazon)
+        TestEnv.saveBook(name = "Kotlin in Depth", edition = 1, price = BigDecimal("60"), store = local)
+        TestEnv.saveOrderItem(code = "ORDER-1", store = amazon)
+        TestEnv.saveOrderItem(code = "ORDER-2", store = local)
+
+        val response = client.get("/order-by-store-book-assoc?store_books_name__start=GraphQL")
 
         assertEquals(HttpStatusCode.OK, response.status)
         val page = response.body<OrderItemPageDto>()
