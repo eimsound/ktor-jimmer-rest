@@ -16,7 +16,6 @@ import org.babyfish.jimmer.sql.kt.ast.query.KMutableQuery
 import org.babyfish.jimmer.sql.kt.ast.query.KMutableRootQuery
 import org.babyfish.jimmer.sql.kt.ast.query.specification.KSpecification
 import org.babyfish.jimmer.sql.kt.ast.table.KNonNullTable
-import org.babyfish.jimmer.sql.kt.ast.table.KNonNullProps
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KProperty1
@@ -123,13 +122,11 @@ interface FilterQueryScope<T : Any> {
  */
 @FilterDslMarker
 class AssociationFilterScope<T : Any>(
-    innerTable: KNonNullTable<T>,
+    override val table: KNonNullTable<T>,
     override val call: RoutingCall,
     @PublishedApi
     internal val prefix: String,
-) : KNonNullProps<T> by innerTable, FilterQueryScope<T> {
-    override val table: KNonNullTable<T> = innerTable
-
+) : FilterQueryScope<T> {
     /**
      * 嵌套关联过滤：`assoc(BookStore::books) { ... }`。
      * 从实体属性引用提取关联名，写错属性名编译期即失败。
