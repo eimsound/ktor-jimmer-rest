@@ -1,6 +1,7 @@
 package com.eimsound.ktor.validator
 
 import com.eimsound.ktor.validator.exception.catcher.ValidationExceptionCatcher
+import org.babyfish.jimmer.UnloadedException
 import java.time.Duration
 import java.time.temporal.Temporal
 import java.util.*
@@ -18,12 +19,14 @@ open class ValidationBuilder() {
         message: String,
         predicate: T.() -> Boolean,
     ): KProperty<T?> = apply {
-        runCatching {
-            val value = call()
-            if (value == null || !predicate(value)) {
-                error { message }
-            }
-        }.getOrElse { exception ->
+        val value = try {
+            call()
+        } catch (e: UnloadedException) {
+            // Jimmer 懒加载未加载的值视为校验失败
+            error { message }
+            return@apply
+        }
+        if (value == null || !predicate(value)) {
             error { message }
         }
     }

@@ -5,6 +5,8 @@ import com.eimsound.rest.test.infra.TestEnv
 import com.eimsound.rest.test.infra.batchRoutes
 import com.eimsound.rest.test.infra.bookRoutes
 import com.eimsound.rest.test.infra.jimmerRestTestApp
+import com.eimsound.ktor.validator.ApiError
+import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -18,6 +20,7 @@ import java.math.BigDecimal
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class BatchTest {
 
@@ -53,7 +56,7 @@ class BatchTest {
     }
 
     @Test
-    fun `batch create fails whole batch on invalid item`() = testApplication {
+    fun `batch create aggregates validation errors per item`() = testApplication {
         val client = jimmerRestTestApp { batchRoutes() }
 
         val response = client.post("/book-batch/batch") {
@@ -69,6 +72,9 @@ class BatchTest {
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
+        val error = response.body<ApiError>()
+        assertEquals(1, error.errors.size)
+        assertTrue(error.errors[0].contains("第 2 条"))
         val count = TestEnv.sqlClient.createQuery(Book::class) {
             select(table)
         }.execute().size

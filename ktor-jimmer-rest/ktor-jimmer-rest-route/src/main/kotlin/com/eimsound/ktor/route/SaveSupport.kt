@@ -1,6 +1,7 @@
 package com.eimsound.ktor.route
 
 import com.eimsound.jimmer.sqlClient
+import com.eimsound.ktor.validator.exception.ValidationException
 import com.eimsound.ktor.provider.*
 import com.eimsound.util.jimmer.entityIdType
 import com.eimsound.util.ktor.queryParameterValues
@@ -60,7 +61,18 @@ internal suspend inline fun <reified TEntity : Any> RoutingCall.performBatch(
     provider: SaveProvider<TEntity>,
 ) {
     val bodies = receive<List<TEntity>>()
-    val entities = bodies.map { provider.prepareEntity(it) }
+    val entities = mutableListOf<TEntity>()
+    val validationErrors = mutableListOf<String>()
+    bodies.forEachIndexed { index, body ->
+        try {
+            entities.add(provider.prepareEntity(body))
+        } catch (e: ValidationException) {
+            validationErrors += e.errors.map { "第 ${index + 1} 条：$it" }
+        }
+    }
+    if (validationErrors.isNotEmpty()) {
+        throw ValidationException(HttpStatusCode.BadRequest, validationErrors)
+    }
     val result = sqlClient.saveEntitiesCommand(entities) {
         setMode(provider.saveMode)
         setAssociatedModeAll(provider.associatedSaveMode)
